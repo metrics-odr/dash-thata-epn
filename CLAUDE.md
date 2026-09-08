@@ -148,27 +148,38 @@ ConvCHK (Vendas/Checkouts) · Faturamento · ROAS (Faturamento/Gasto) · Ticket 
   **Efeito Próximo Nível**). Base de **Vendas / CAC / ConvCHK / Ticket**.
 - O funil tem 3 ofertas no total: **Efeito Próximo Nível** (produto principal) e,
   como upsell pós-compra, **Case de Promoção** em 2 variações de preço — a oferta
-  inicial (~USD 90) e, se recusada, uma versão mais barata (~USD 40). Ambas aparecem
-  com o mesmo texto de produto (`Case de Promoção`) na coluna `Produto`; o preço
-  (`Fat. líquido (USD)`) é o que distingue qual das duas foi aceita — não há coluna
-  separada para USL/DSL na planilha. O painel **"Vendas por produto"** (abas Visão
-  Geral e Meta Ads) já mostra as duas linhas separadamente quando os textos de
-  `Produto` diferem; como aqui o texto é idêntico para as duas variações de preço,
-  elas somam numa única linha "Case de Promoção" nesse painel (nº de vendas e % vs.
-  produto principal) — não dá para separar USL de DSL sem uma coluna própria na
-  planilha para o tipo de oferta.
+  inicial/upsell (~USD 90) e, se recusada, o downsell mais barato do mesmo produto
+  (~USD 40). Ambas aparecem com o mesmo texto de produto (`Case de Promoção`) na
+  coluna `Produto` — não há coluna separada para USL/DSL na planilha, então
+  `build/build.py` diferencia pelo **valor da venda**: `UPSELL_SPLIT_VALUE = 65.0`
+  (USD) em `build/config.py` — venda ≥ 65 vira `UPSELL_USL_LABEL` ("Case de Promoção
+  (USL)"), venda < 65 vira `UPSELL_DSL_LABEL` ("Case de Promoção (DSL)"). Esses
+  rótulos (textos diferentes) já entram como duas linhas separadas no painel
+  **"Vendas por produto"** (abas Visão Geral e Meta Ads), com contagem e % vs.
+  produto principal cada uma.
+- **Atribuição do upsell/downsell ao funil**: pelo **nome do produto**
+  (`UPSELL_PRODUCT_PREFIX = "case de promocao"`), **não** pelo match de UTM contra o
+  Meta Ads — na prática essas linhas de upsell/downsell pós-compra costumam vir sem
+  `Detalhe UTM` preenchido (não é um novo clique de anúncio, é uma oferta na página
+  de obrigado). Por isso ficam com `meta=0` (não aparecem nos painéis filtrados "só
+  Meta Ads"/Tráfego) mas entram normalmente nos totais da aba Visão Geral e no
+  Faturamento/ROAS do funil. Se um dia a planilha passar a preencher UTM nessas
+  linhas, o match por campanha+anúncio (ver abaixo) passa a valer também para elas.
 - **Faturamento / ROAS** = soma de **todos os produtos** do funil (produto principal
-  + as duas variações de Case de Promoção).
-- Uma venda entra no funil se: é o produto principal **OU** a combinação
-  `utm_campaign` + `utm_content` (extraídos de `Detalhe UTM` — ver "Fontes de dados")
-  casa com uma linha real da aba Meta Ads (captura os upsells de Case de Promoção,
-  que carregam a UTM do anúncio original). O match exige campanha **e** anúncio
-  juntos — nomes de anúncio (`AD01`, `AD02`...) se repetem entre campanhas diferentes;
-  casar só pelo nome do anúncio atribuiria a venda à campanha errada. Quando casa, a
-  venda herda a campanha/conjunto **reais do Meta** (fica na mesma linha do gasto nas
-  tabelas). Vendas de outros funis do cliente (planilha tem vários — Imersão Operação
-  Promoção, Profissional Fast Tracker, etc.) ficam de fora por não baterem nem produto
-  nem UTM. Só conta status pago (`Status` = Completo/Aprovado/...).
+  + as duas variações de Case de Promoção). **Vendas / CAC / ConvCHK / Ticket** =
+  **só** o produto principal (upsell/downsell nunca entram nessas métricas, mesmo
+  contando para o Faturamento).
+- Uma venda entra no funil se: é o produto principal **OU** é upsell/downsell dele
+  (`UPSELL_PRODUCT_PREFIX`, ver acima) **OU** a combinação `utm_campaign` +
+  `utm_content` (extraídos de `Detalhe UTM` — ver "Fontes de dados") casa com uma
+  linha real da aba Meta Ads (captura orderbumps que carreguem a UTM do anúncio
+  original). O match de UTM exige campanha **e** anúncio juntos — nomes de anúncio
+  (`AD01`, `AD02`...) se repetem entre campanhas diferentes; casar só pelo nome do
+  anúncio atribuiria a venda à campanha errada. Quando casa, a venda herda a
+  campanha/conjunto **reais do Meta** (fica na mesma linha do gasto nas tabelas).
+  Vendas de outros funis do cliente (planilha tem vários — Imersão Operação
+  Promoção, Profissional Fast Tracker, etc.) ficam de fora por não baterem nem
+  produto, upsell nem UTM. Só conta status pago (`Status` = Completo/Aprovado/...).
 
 ### Imposto Meta Ads
 `TAX_FACTOR = 1.13806` (+13,806%) — imposto padrão que a Meta cobra sobre a verba de

@@ -64,6 +64,11 @@ ROAS_TARGET = cfg.ROAS_TARGET
 REPORT_BAND_LOW = cfg.REPORT_BAND_LOW
 REPORT_BAND_HIGH = cfg.REPORT_BAND_HIGH
 IA_WORKER_URL = cfg.IA_WORKER_URL
+# Upsell/downsell pós-compra (opcional — ver comentários em config.example.py)
+UPSELL_PRODUCT_PREFIX = getattr(cfg, "UPSELL_PRODUCT_PREFIX", "") or ""
+UPSELL_SPLIT_VALUE = getattr(cfg, "UPSELL_SPLIT_VALUE", 0.0) or 0.0
+UPSELL_USL_LABEL = getattr(cfg, "UPSELL_USL_LABEL", "") or "Upsell"
+UPSELL_DSL_LABEL = getattr(cfg, "UPSELL_DSL_LABEL", "") or "Downsell"
 
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 BRT = timezone(timedelta(hours=-3))   # horário de Brasília (exibição)
@@ -148,6 +153,10 @@ def is_paid(status: str) -> bool:
 
 def is_main_product(prod: str) -> bool:
     return norm(prod).startswith(MAIN_PRODUCT_PREFIX)
+
+
+def is_upsell_product(prod: str) -> bool:
+    return bool(UPSELL_PRODUCT_PREFIX) and norm(prod).startswith(UPSELL_PRODUCT_PREFIX)
 
 
 # ----- Máscara de PII (a página publicada é pública) ----- #
@@ -335,13 +344,16 @@ def process(meta_rows, sales_rows):
         ad = (det_content if use_utm_detail else cell(row, sidx["utm_content"])) or "(sem anúncio)"
         sale_camp = (det_campaign if use_utm_detail else cell(row, sidx["utm_campaign"])) or "(sem campanha)"
         main = is_main_product(prod)
+        upsell = (not main) and is_upsell_product(prod)
         # Match com o Meta = campanha + anúncio juntos (o mesmo Ad Name se repete
         # entre campanhas; casar só pelo anúncio atribui a venda à campanha errada).
         meta_key = (norm(sale_camp), norm(ad))
         meta_hit = ad_map.get(meta_key)
-        # Atribuição ao tráfego rastreado: produto principal OU par campanha+anúncio
-        # que existe no Meta (captura orderbumps/upsells que carregam a UTM do anúncio).
-        attributed = main or (meta_hit is not None)
+        # Atribuição ao funil: produto principal OU upsell/downsell dele (pelo nome
+        # do produto — normalmente não carrega UTM própria, ver UPSELL_PRODUCT_PREFIX)
+        # OU par campanha+anúncio que existe no Meta (captura outros orderbumps que
+        # carregam a UTM do anúncio original).
+        attributed = main or upsell or (meta_hit is not None)
         if not attributed:
             continue
         # Quando casa com o Meta, usa a campanha/conjunto REAIS do Meta (mantém a
@@ -352,15 +364,23 @@ def process(meta_rows, sales_rows):
             camp = sale_camp
             adset = (det_medium if use_utm_detail else cell(row, sidx["utm_medium"])) or "(sem conjunto)"
         val = to_float(cell(row, sidx["val"]))
+        prod_out = prod or "—"
+        if upsell:
+            # As 2 ofertas (upsell caro / downsell barato) vêm com o MESMO texto de
+            # produto na planilha — só o valor da venda diferencia qual foi aceita.
+            prod_out = UPSELL_USL_LABEL if val >= UPSELL_SPLIT_VALUE else UPSELL_DSL_LABEL
         sales.append({
             "d": parse_date(cell(row, sidx["created"])),
             "camp": camp, "adset": adset, "ad": ad,
-            "prod": prod or "—",
+            "prod": prod_out,
             "val": round(val, 2),
+            # Vendas/CAC/ConvCHK/Ticket são só do produto principal — upsell/downsell
+            # entram no Faturamento/ROAS (val acima) mas não em "main".
             "main": 1 if main else 0,
             # meta=1 quando a venda casa com campanha+anúncio real do Meta (tráfego
             # pago). Vendas do produto principal sem esse match (orgânico/direto, ou
-            # UTM sem anúncio identificável) têm meta=0.
+            # UTM sem anúncio identificável) têm meta=0 — upsell/downsell atribuídos
+            # só pelo nome do produto (sem UTM correspondente) também ficam meta=0.
             "meta": 1 if meta_hit is not None else 0,
             "nm": first_last_initial(cell(row, sidx["name"])),
             "em": mask_email(cell(row, sidx["email"])),
