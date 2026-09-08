@@ -1,0 +1,66 @@
+/* ============================================================================
+   IDENTIDADE VISUAL — TODAS as cores da dashboard ficam AQUI.
+   Este arquivo NÃO tem lógica de dados nem layout: mexa aqui para trocar cores.
+   O tema ESCURO é o padrão; o CLARO é só um fallback opcional.
+   ============================================================================ */
+
+/* ------------------------------ TEMA CLARO --------------------------------- */
+:root{
+  --text-primary:#1A1D2E; --bg:#F4F5F8; --surface:#FFFFFF; --border:#E6E8EE;
+  --muted:#6B7280; --ink:#1A1D2E; --selected:#DBEAFE;
+  --accent-blue:#3B5BDB; --accent-blue-light:#EEF2FF;
+  --good:#0CA30C; --bad:#E34948; --yellow:#E8A400; --aqua:#1BAF7A; --red:#E34948; --black:#1A1D2E;
+  --grid:#EEF0F5; --thead:#F5F7FB; --tfoot:#EEF1F7;
+  /* séries de gráfico (paleta) */
+  --c1:#3B5BDB; --c2:#E34948; --c3:#1BAF7A; --c4:#E8A400; --c5:#8AA0F0;
+  --c6:#9B59B6; --c7:#16A085; --c8:#E67E22; --c9:#F97316; --c10:#6366F1;
+  /* paleta dos gráficos no tema claro = mantém as cores originais */
+  --cc1:#3B5BDB; --cc2:#E34948; --cc3:#1BAF7A; --cc4:#E8A400; --cc5:#8AA0F0;
+  --cc6:#9B59B6; --cc7:#16A085; --cc8:#E67E22; --cc9:#F97316; --cc10:#6366F1;
+  /* linhas semânticas dos gráficos */
+  --chart-vendas:#3B5BDB; --chart-gasto:#E34948; --chart-faturamento:#1BAF7A;
+  --chart-cpm:#E34948; --chart-ctr:#3B5BDB; --chart-cr:#3B5BDB;
+  --chart-vischk:#1BAF7A; --chart-convlp:#E8A400;
+  /* heatmap por coluna (uma cor fixa por métrica; a opacidade varia no JS) */
+  --heat-gasto:#E34948; --heat-fat:#0CA30C; --heat-roas:#E8A400;
+  /* tags/pills de valor (CAC azul leve, ROAS dourado — nada de mostarda) */
+  --pill-cac:#3B5BDB; --pill-cac-bg:rgba(59,91,219,.10);
+  --pill-roas:#B7791F; --pill-roas-bg:rgba(183,121,31,.12);
+}
+
+/* ------------------------------ TEMA ESCURO (padrão) ----------------------- */
+:root[data-theme="dark"]{
+  --text-primary:#0B0E14;      /* fundo da sidebar (mais escuro que o fundo principal) */
+  --bg:#0F1117;                /* Fundo principal */
+  --surface:#171B24;           /* Cards */
+  --border:#2C3444;            /* Bordas */
+  --ink:#F4F7FB;               /* Texto principal */
+  --muted:#A9B4C4;             /* Texto secundário */
+  --accent-blue:#3B82F6;       /* Accent: botões, links, abas ativas, foco */
+  --accent-blue-light:#1B2740; /* fundo sutil azulado: badges, hover de linha, hero */
+  --selected:#27354A;          /* Linha selecionada */
+  --good:#22C55E;              /* Positivo */
+  --bad:#EF4444;               /* Negativo */
+  --red:#EF4444;
+  --yellow:#F59E0B;            /* Alerta */
+  --aqua:#06B6D4;              /* Info/seleção (severidade baixa) */
+  --black:#0F1117;
+  --grid:#2C3444;              /* Linhas do gráfico */
+  --thead:#1E2430;             /* Cabeçalho de tabela (= cards hover) */
+  --tfoot:#1E2430;
+  /* PALETA base p/ bordas do funil (aprovada) */
+  --c1:#3B82F6; --c2:#22C55E; --c3:#F59E0B; --c4:#8B5CF6; --c5:#EF4444;
+  --c6:#06B6D4; --c7:#EC4899; --c8:#84CC16; --c9:#F97316; --c10:#6366F1;
+  /* PALETA dos GRÁFICOS — mais vívida/saturada (até 10 séries) */
+  --cc1:#2F6BFF; --cc2:#16D66B; --cc3:#FFB020; --cc4:#9D5CFF; --cc5:#FF3B47;
+  --cc6:#1FD5EC; --cc7:#FF4D8D; --cc8:#9BE015; --cc9:#FF8A1F; --cc10:#6D7BFF;
+  /* linhas semânticas dos gráficos (vívidas) */
+  --chart-vendas:#2F6BFF; --chart-gasto:#FF3B47; --chart-faturamento:#16D66B;
+  --chart-cpm:#FFB020; --chart-ctr:#1FD5EC; --chart-cr:#2F6BFF;
+  --chart-vischk:#16D66B; --chart-convlp:#FFB020;
+  /* heatmap por coluna: Gasto vermelho, Faturamento verde, ROAS amarelo */
+  --heat-gasto:#EF4444; --heat-fat:#22C55E; --heat-roas:#F59E0B;
+  /* tags/pills de valor (CAC azul leve, ROAS dourado — parecido com a tag "Automático") */
+  --pill-cac:#60A5FA; --pill-cac-bg:rgba(96,165,250,.14);
+  --pill-roas:#FBBF24; --pill-roas-bg:rgba(251,191,36,.14);
+}

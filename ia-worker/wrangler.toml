@@ -1,0 +1,20 @@
+name = "nomecliente-ia-insights"   # TEMPLATE: troque "nomecliente" pelo nome do Worker (ver SETUP-IA.md, passo A.1.6)
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# Secrets (NÃO ficam aqui — configure via GitHub Secrets, que o workflow
+# .github/workflows/deploy-worker.yml reaplica a cada deploy):
+#   ANTHROPIC_API_KEY
+#   INSIGHTS_PASSWORD
+# Alternativa manual (sem GitHub Actions): `wrangler secret put ANTHROPIC_API_KEY`
+# e `wrangler secret put INSIGHTS_PASSWORD` — ver SETUP-IA.md.
+
+# KV namespace onde o Worker guarda o último resultado gerado (persistência
+# server-side: qualquer visitante lê via GET, sem senha). O id abaixo é um
+# placeholder — o workflow deploy-worker.yml cria o namespace (se não existir)
+# e substitui __KV_NAMESPACE_ID__ automaticamente antes do deploy. Se a conta
+# não tiver permissão de KV, o workflow remove este bloco e publica o Worker
+# sem persistência (comportamento anterior), sem quebrar o deploy.
+[[kv_namespaces]]
+binding = "INSIGHTS_KV"
+id = "__KV_NAMESPACE_ID__"

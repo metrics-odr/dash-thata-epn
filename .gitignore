@@ -1,0 +1,18 @@
+# Saida gerada pelo build (o GitHub Actions reconstroi a cada execucao)
+dist/
+
+# Node / Python locais
+node_modules/
+__pycache__/
+*.pyc
+
+# CSVs baixados para teste local
+*.csv
+
+# Arquivos temporários da geração de relatórios (aba Relatórios / Routine diária)
+# OBS.: build/relatorios.json e build/relatorios_metrics.json NÃO são
+# ignorados — são versionados (o Actions commita o metrics.json às 23:50 BRT;
+# a Routine do Claude Code lê esse arquivo às 23:59 BRT e commita relatorios.json).
+build/_meta_tmp.csv
+build/_sales_tmp.csv
+*.xlsx

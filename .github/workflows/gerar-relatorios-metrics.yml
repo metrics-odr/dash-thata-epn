@@ -1,0 +1,52 @@
+name: Gerar Métricas dos Relatórios
+
+# Calcula (só matemática, sem IA) as métricas por período usadas pelo
+# Briefing do Gestor e commita build/relatorios_metrics.json na main.
+# Roda ~9 min antes da Routine do Claude Code (23:59 BRT), que lê esse
+# arquivo e redige os textos. O push deste próprio workflow força uma
+# geração imediata quando a configuração do Actions é reativada.
+# O runner alcança o Google Sheets; o sandbox do agente não alcança.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 2 * * *"  # 23:50 BRT (backup nativo; pode atrasar minutos)
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/workflows/gerar-relatorios-metrics.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: relatorios-metrics
+  cancel-in-progress: false
+
+jobs:
+  gerar-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gerar métricas (lê as planilhas via CSV público, somente leitura)
+        run: python build/gerar_relatorios.py --out build/relatorios_metrics.json
+
+      - name: Commit se houve mudança
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build/relatorios_metrics.json
+          # git diff (sem --cached) ignora arquivo novo/untracked — por isso
+          # o add vem antes e a comparação é contra o índice (--cached).
+          if git diff --cached --quiet -- build/relatorios_metrics.json; then
+            echo "sem mudanças nas métricas"
+            exit 0
+          fi
+          git commit -m "Atualiza métricas dos relatórios (automático)"
+          git push

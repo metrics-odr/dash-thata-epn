@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- cache-bust: pagina nunca servida de cache; dados mudam a cada 30 min -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="build" content="__BUILD_ID__">
+<title>Dashboard</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>__STYLES__</style>
+</head>
+<body>
+<input type="checkbox" id="navToggle">
+<div id="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-main" id="logoMain"></div><div class="logo-sub" id="logoSub"></div></div>
+    <div class="sec">Dashboards</div>
+    <div class="nav-item active" data-page="geral"><span class="ic">◱</span> Visão Geral</div>
+    <div class="nav-item" data-page="meta"><span class="ic">◨</span> Meta Ads</div>
+    <div class="nav-item" data-page="rel"><span class="ic">▤</span> Relatórios</div>
+    <div class="nav-item" data-page="ia"><span class="ic">✦</span> IA Insights</div>
+    <div class="foot">Somente leitura · atualiza ~30 min<br><span id="buildFoot"></span></div>
+  </aside>
+
+  <div class="main-area">
+    <div class="topbar">
+      <label class="ham" for="navToggle" title="Menu">☰</label>
+      <div class="ptitle" id="ptitle">Visão Geral</div>
+      <div class="sep"></div>
+      <div class="period-picker" id="periodPicker">
+        <button class="btn period-btn" id="periodBtn" aria-haspopup="true" aria-expanded="false">
+          <span class="period-ic">🗓</span>
+          <span class="period-label" id="periodBtnLabel">Selecionar período</span>
+          <span class="period-caret">▾</span>
+        </button>
+        <div class="period-pop" id="periodPop" hidden>
+          <div class="pp-body">
+            <div class="pp-presets" id="ppPresets"></div>
+            <div class="pp-cals">
+              <div class="pp-cal" id="ppCalFrom"></div>
+              <div class="pp-cal" id="ppCalTo"></div>
+            </div>
+          </div>
+          <div class="pp-foot">
+            <div class="pp-range" id="ppRange"></div>
+            <div class="pp-actions">
+              <button class="btn" id="ppCancel">Cancelar</button>
+              <button class="btn primary" id="ppApply">Aplicar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn" id="clearBtn">Remover Filtros</button>
+      <div class="sep"></div>
+      <div class="tax-toggle" id="taxToggle"><div class="toggle-track"><div class="toggle-thumb"></div></div><span class="toggle-label" id="taxLabel"></span></div>
+      <button class="btn" id="themeBtn" title="Alternar tema claro/escuro">◐ Tema</button>
+      <div class="spacer"></div>
+      <div class="updated" id="updated"></div>
+      <button class="btn primary" id="refreshBtn"><span class="spin">↻</span> Atualizar Dados</button>
+    </div>
+
+    <div class="page-content">
+      <!-- ===================== PÁGINA 1: VISÃO GERAL ===================== -->
+      <div class="page active" id="page-geral">
+        <h2 class="sec-title">Funil &amp; evolução diária</h2>
+        <div class="grid funnel-grid">
+          <div class="card"><div class="funnel" id="geralFunnel"></div>
+            <p class="note">Vendas e Faturamento = <b>totais</b> (todas as vendas). Vendas/CAC/Ticket = produto principal (<span id="mainProdNoteG"></span>); conversões (CR, VisCHK, ConvCHK) = <b>só Meta Ads</b>.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-chart"><h3>Evolução diária</h3><p class="hint">Vendas (barras) · Gasto (vermelha) · Faturamento (verde) · ROAS (linha preta, eixo próprio). Vendas/Faturamento = totais.</p><div class="chart-box"><canvas id="gCombo"></canvas></div></div>
+            <div class="tbl-wrap tbl-normal"><table class="dt" id="gDaily"></table></div>
+            <p class="note" style="padding:10px 15px 12px">Vendas e Faturamento = <b>totais</b> (todas as vendas). Conversões (CR, VisCHK, ConvCHK) consideram <b>apenas Meta Ads</b>. Heatmap por coluna · último dia no topo · clique numa data para filtrar (Ctrl = várias).</p>
+          </div>
+        </div>
+
+        <h2 class="sec-title">Indicadores por dia</h2>
+        <div class="funnel-charts">
+          <div class="card"><h3>CPM e CTR por dia</h3><p class="hint">CPM (R$, esq.) · CTR (%, dir.)</p><div class="chart-box chart-sm"><canvas id="gCpmCtr"></canvas></div></div>
+          <div class="card"><h3>Connect Rate e VisCHK por dia</h3><p class="hint">CR = Page Views/Cliques · VisCHK = Checkouts/Page Views</p><div class="chart-box chart-sm"><canvas id="gCrVis"></canvas></div></div>
+          <div class="card"><h3>ConvLP e ConvCHK por dia</h3><p class="hint">ConvLP = Vendas/Page Views · ConvCHK = Vendas/Checkouts (Meta)</p><div class="chart-box chart-sm"><canvas id="gConv"></canvas></div></div>
+          <div class="card" style="padding:0"><div style="padding:14px 15px 4px"><h3>Vendas por produto</h3><p class="hint" style="margin:0"><span id="mainProdNoteProdG"></span> = 100% · demais em % (todas as vendas)</p></div><div class="tbl-wrap" style="max-height:190px"><table class="dt" id="gProd"></table></div></div>
+        </div>
+      </div>
+
+      <!-- ===================== PÁGINA 2: META ADS ===================== -->
+      <div class="page" id="page-meta">
+        <h2 class="sec-title">Funil &amp; combinação diária</h2>
+        <div class="grid funnel-grid">
+          <div class="card"><div class="funnel" id="metaFunnel"></div>
+            <p class="note">Considera <b>apenas vendas atribuídas ao Meta Ads</b> (UTM Content = Ad Name). <b>Vendas/CAC/ConvCHK/Ticket</b> = produto principal (<span id="mainProdNote"></span>); <b>Faturamento/ROAS</b> = todos os produtos do funil (orderbumps/upsells).</p>
+          </div>
+          <div class="panel">
+            <div class="panel-chart"><h3>Combinação diária</h3><p class="hint">Vendas (barras) · Gasto (vermelha) · Faturamento (verde) · ROAS (linha preta, eixo próprio) — só Meta Ads.</p><div class="chart-box"><canvas id="mCombo"></canvas></div></div>
+            <div class="tbl-wrap tbl-normal"><table class="dt" id="tDaily"></table></div>
+            <p class="note" style="padding:10px 15px 12px">Todos os valores consideram <b>apenas Meta Ads</b>. Heatmap por coluna · último dia no topo · clique numa data para filtrar (Ctrl = várias).</p>
+          </div>
+        </div>
+
+        <h2 class="sec-title">Indicadores por dia</h2>
+        <div class="funnel-charts">
+          <div class="card"><h3>CPM e CTR por dia</h3><p class="hint">CPM (R$, esq.) · CTR (%, dir.)</p><div class="chart-box chart-sm"><canvas id="mCpmCtr"></canvas></div></div>
+          <div class="card"><h3>Connect Rate e VisCHK por dia</h3><p class="hint">CR = Page Views/Cliques · VisCHK = Checkouts/Page Views</p><div class="chart-box chart-sm"><canvas id="mCrVis"></canvas></div></div>
+          <div class="card"><h3>ConvLP e ConvCHK por dia</h3><p class="hint">ConvLP = Vendas/Page Views · ConvCHK = Vendas/Checkouts</p><div class="chart-box chart-sm"><canvas id="mConv"></canvas></div></div>
+        </div>
+
+        <h2 class="sec-title">Faturamento por anúncio &amp; vendas por produto</h2>
+        <div class="funnel-charts">
+          <div class="card"><h3>Faturamento por anúncio</h3><p class="hint">Top 10 · utm_content · só Meta Ads</p><div class="chart-box chart-sm"><canvas id="mContent"></canvas></div></div>
+          <div class="card" style="padding:0"><div style="padding:14px 15px 4px"><h3>Vendas por produto</h3><p class="hint" style="margin:0"><span id="mainProdNoteProdM"></span> = 100% · só Meta Ads</p></div><div class="tbl-wrap" style="max-height:190px"><table class="dt" id="mProd"></table></div></div>
+        </div>
+
+        <h2 class="sec-title">Otimização · Campanha → Conjunto → Anúncio</h2>
+        <div class="table-chart-pair">
+          <div class="thead-title"><span>Campanhas</span><button class="btn-mini" id="clearCampBtn" title="Remover só o filtro de campanha">✕ Filtro</button></div>
+          <div class="tbl-wrap tbl-normal"><table class="dt" id="tCamp"></table></div>
+          <div class="pair-chart"><div class="pc-title">CAC por campanha, por dia</div><canvas id="chCamp"></canvas></div>
+        </div>
+        <div class="table-chart-pair">
+          <div class="thead-title"><span>Conjuntos (Ad Sets)</span><button class="btn-mini" id="clearAdsetBtn" title="Remover só o filtro de conjunto">✕ Filtro</button></div>
+          <div class="tbl-wrap tbl-normal"><table class="dt" id="tAdset"></table></div>
+          <div class="pair-chart"><div class="pc-title">CAC por conjunto, por dia</div><canvas id="chAdset"></canvas></div>
+        </div>
+        <div class="table-chart-pair">
+          <div class="thead-title"><span>Anúncios</span><button class="btn-mini" id="clearAdBtn" title="Remover só o filtro de anúncio">✕ Filtro</button></div>
+          <div class="tbl-wrap tbl-double"><table class="dt" id="tAd"></table></div>
+          <div class="pair-chart"><div class="pc-title">CAC por anúncio, por dia</div><canvas id="chAd"></canvas></div>
+        </div>
+
+        <h2 class="sec-title">Compradores <span class="pill q" id="qCount"></span></h2>
+        <div class="card" style="padding:0">
+          <div class="tbl-wrap" style="max-height:360px"><table class="dt" id="tQual"></table></div>
+          <p class="note" style="padding:10px 15px">E‑mail <b>mascarado</b> (página pública). Só vendas atribuídas ao Meta Ads (produto principal + orderbumps/upsells).</p>
+        </div>
+      </div>
+
+      <!-- ===================== PÁGINA: RELATÓRIOS ===================== -->
+      <div class="page" id="page-rel">
+        <div class="rel-head">
+          <div>
+            <h2 class="rel-title">Relatório · <span id="relPeriodName">Período</span></h2>
+            <p class="rel-sub" id="relPeriodRange"></p>
+          </div>
+          <div class="rel-legend">
+            <span class="rel-legend-lbl">Metas (CAC/ROAS):</span>
+            <span class="rel-chip c-red">Muito abaixo</span>
+            <span class="rel-chip c-yellow">Pouco abaixo</span>
+            <span class="rel-chip c-green">Na meta / acima</span>
+            <span class="rel-chip c-cyan">Muito acima</span>
+          </div>
+        </div>
+
+        <h2 class="sec-title">Visão geral</h2>
+        <div class="rel-ov">
+          <div class="rel-ov-block">
+            <div class="rel-ov-head">Visão Geral Total <span>todas as vendas</span></div>
+            <div class="rel-cards" id="relCardsTotal"></div>
+          </div>
+          <div class="rel-ov-block">
+            <div class="rel-ov-head">Visão Geral Tráfego <span>apenas Meta Ads</span></div>
+            <div class="rel-cards" id="relCardsAds"></div>
+          </div>
+        </div>
+
+        <h2 class="sec-title">Funil dia a dia</h2>
+        <div class="card" style="padding:0">
+          <div class="tbl-wrap tbl-normal"><table class="dt rel-dt" id="relDaily"></table></div>
+          <p class="note" style="padding:10px 15px">Total = todas as vendas · Ads = só Meta Ads (separados pela barra vertical). <b>CAC</b> e <b>ROAS</b> com <b>código de cor</b> conforme a meta. Último dia no topo.</p>
+        </div>
+
+        <h2 class="sec-title">Visão por campanha</h2>
+        <div class="card" style="padding:0">
+          <div class="tbl-wrap"><table class="dt rel-dt" id="relCamp"></table></div>
+          <p class="note" style="padding:10px 15px">Nome completo da campanha · só Meta Ads. CAC/ROAS com código de cor conforme a meta.</p>
+        </div>
+
+        <h2 class="sec-title">Anúncios · destaques e alertas</h2>
+        <div class="rel-ads-grid">
+          <div class="card" style="padding:0">
+            <div class="rel-ads-head good">▲ Top 5 anúncios</div>
+            <div class="tbl-wrap"><table class="dt rel-dt" id="relTop"></table></div>
+          </div>
+          <div class="card" style="padding:0">
+            <div class="rel-ads-head bad">▼ Piores 5 anúncios</div>
+            <div class="tbl-wrap"><table class="dt rel-dt" id="relWorst"></table></div>
+          </div>
+        </div>
+        <p class="note">Ranqueados por ROAS (e CAC como desempate) entre anúncios com gasto relevante no período. Link abre o criativo no Instagram.</p>
+
+        <h2 class="sec-title">Briefing do Gestor</h2>
+        <div class="rel-brief" id="relBrief"></div>
+        <p class="note" id="relBriefStamp"></p>
+      </div>
+
+      <!-- ===================== PÁGINA 3: IA INSIGHTS ===================== -->
+      <div class="page" id="page-ia">
+        <h2 class="sec-title">IA Insights</h2>
+        <div class="card">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+            <button class="btn primary" id="iaGen"><span class="spin">✦</span> Gerar insights</button>
+            <div class="chips" id="iaWin" style="display:flex;gap:6px"></div>
+            <button class="btn" id="iaCfgBtn">⚙ Configurar</button>
+            <span class="hint" id="iaStatus" style="margin:0"></span>
+          </div>
+          <div class="ia-config" id="iaConfig" style="display:none">
+            <p class="hint" style="margin:6px 0">Os insights já ficam salvos no Worker (Cloudflare) e aparecem para <b>qualquer visitante</b>, em qualquer navegador, sem configurar nada. Para <b>gerar novos insights</b> é preciso a senha (a mesma do secret <code>INSIGHTS_PASSWORD</code>) — fica salva só neste navegador. Só preencha "Worker URL" se quiser apontar para outro backend; o padrão já vem embutido no build. Passo a passo em <b>SETUP-IA.md</b>.</p>
+            <div class="ia-fields">
+              <label>Worker URL (opcional)<input id="iaUrl" placeholder="https://nomecliente-ia-insights.xxx.workers.dev"></label>
+              <label>Senha<input id="iaPass" type="password" placeholder="senha do Worker"></label>
+              <button class="btn primary" id="iaSave">Salvar</button>
+            </div>
+            <span class="hint" id="iaCfgMsg" style="display:block; margin-top:6px"></span>
+          </div>
+          <p class="note">Análise feita por IA (Claude) do <b>funil</b> e das <b>estruturas ativas</b> — CPM, CTR, CR, VisCHK, ConvLP, ConvCHK, CAC, ROAS, Ticket. A janela acima (independente do filtro das outras abas) define o histórico usado para detectar <b>tendência/saturação</b> (compara a metade recente vs a anterior). Sinaliza gargalos e destaques; recomendações de verba consideram <b>ABO (conjunto)</b> e <b>CBO (campanha)</b>. Aplicação de verba: peça no chat que eu executo no Meta. Cada clique em "Gerar insights" = 1 chamada à IA, e o resultado substitui o anterior para todo mundo.</p>
+        </div>
+        <div id="iaCards" class="ia-cards"><div class="ia-empty">Carregando insights…</div></div>
+      </div>
+
+      <div class="foot">Atualizado automaticamente a cada ~30 min via GitHub Actions + cron‑job.org. Somente leitura das planilhas. <span id="buildFoot2"></span></div>
+    </div>
+  </div>
+</div>
+
+<script id="payload" type="application/json">__DATA_JSON__</script>
+<script>__APP_JS__</script>
+</body>
+</html>

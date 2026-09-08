@@ -1,0 +1,76 @@
+name: Deploy IA Worker (Cloudflare)
+
+# Publica o Worker da aba "IA Insights" sempre que ia-worker/** mudar na main,
+# ou manualmente via workflow_dispatch. O runner do GitHub alcança a API da
+# Cloudflare (o sandbox do agente nao alcança) — por isso o deploy roda aqui.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "ia-worker/**"
+      - ".github/workflows/deploy-worker.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Provisionar KV namespace para persistir os insights (best-effort)
+        working-directory: ia-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -uo pipefail
+          npm install -g wrangler >/dev/null 2>&1
+          WORKER_NAME=$(node -e "const t=require('fs').readFileSync('wrangler.toml','utf8');const m=t.match(/^name\s*=\s*\"([^\"]+)\"/m);process.stdout.write(m?m[1]:'')")
+          TITLE="${WORKER_NAME}-INSIGHTS_KV"
+          find_id() {
+            wrangler kv namespace list 2>/dev/null | node -e "
+              let d='';process.stdin.on('data',c=>d+=c);
+              process.stdin.on('end',()=>{
+                try{
+                  const list=JSON.parse(d);
+                  const m=list.find(n=>n.title==='$TITLE');
+                  if(m) process.stdout.write(m.id);
+                }catch(e){}
+              });"
+          }
+          ID=$(find_id)
+          if [ -z "$ID" ]; then
+            wrangler kv namespace create "$TITLE" || true
+            ID=$(find_id)
+          fi
+          if [ -n "$ID" ]; then
+            sed -i "s/__KV_NAMESPACE_ID__/$ID/" wrangler.toml
+            echo "KV namespace pronto: $TITLE ($ID)"
+          else
+            echo "::warning::Não foi possível criar/obter o KV namespace ($TITLE) — verifique se CLOUDFLARE_API_TOKEN tem a permissão 'Workers KV Storage: Edit'. Publicando o Worker SEM persistência por enquanto."
+            sed -i '/^\[\[kv_namespaces\]\]$/,/^id = "__KV_NAMESPACE_ID__"$/d' wrangler.toml
+          fi
+
+      - name: Deploy Worker via Wrangler (e reaplica os secrets a cada deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: ia-worker
+          command: deploy
+          secrets: |
+            ANTHROPIC_API_KEY
+            INSIGHTS_PASSWORD
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INSIGHTS_PASSWORD: ${{ secrets.INSIGHTS_PASSWORD }}
