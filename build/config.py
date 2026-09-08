@@ -46,6 +46,20 @@ MAIN_PRODUCT_PREFIX = "efeito proximo nivel"   # produto "Efeito Próximo Nível
 # deixe True para contar todas as linhas como venda paga.
 COUNT_ALL_AS_PAID = False   # planilha tem coluna "Status" confiável (Completo/Aprovado/...)
 
+# Upsell/downsell pós-compra: após comprar o produto principal, o cliente
+# recebe uma oferta de "Case de Promoção" (~USD 90); se recusar, recebe uma
+# 2ª oferta do MESMO produto mais barata (~USD 40). As duas aparecem com o
+# texto idêntico "Case de Promoção" na coluna Produto da planilha — não dá
+# pra diferenciar pelo nome, só pelo valor da venda. Entram no
+# Faturamento/ROAS do funil mas NÃO em Vendas/CAC/ConvCHK/Ticket (só do
+# produto principal). Atribuídas ao funil pelo nome do produto (não
+# precisam bater UTM com o Meta Ads, porque o upsell/downsell normalmente
+# não carrega UTM própria).
+UPSELL_PRODUCT_PREFIX = "case de promocao"   # produto "Case de Promoção" (upsell + downsell)
+UPSELL_SPLIT_VALUE = 65.0                    # USD: venda >= 65 = USL (~90) · < 65 = DSL (~40)
+UPSELL_USL_LABEL = "Case de Promoção (USL)"  # oferta inicial, mais cara
+UPSELL_DSL_LABEL = "Case de Promoção (DSL)"  # oferta de recusa, mais barata
+
 # ==========================================================================
 # 3) RÓTULOS EXIBIDOS NA INTERFACE
 # ==========================================================================
