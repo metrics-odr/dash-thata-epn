@@ -445,6 +445,18 @@ def main():
     if os.environ.get("DEBUG_HEADERS"):
         print("DEBUG meta header:", meta_rows[0] if meta_rows else None, file=sys.stderr)
         print("DEBUG sales header:", sales_rows[0] if sales_rows else None, file=sys.stderr)
+        h = [norm(x) for x in (sales_rows[0] if sales_rows else [])]
+        i_liq = h.index(norm("Fat. líquido (BRL)")) if norm("Fat. líquido (BRL)") in h else None
+        i_bru = h.index(norm("Valor bruto (BRL)")) if norm("Valor bruto (BRL)") in h else None
+        i_prod = h.index(norm("Produto")) if norm("Produto") in h else None
+        i_status = h.index(norm("Status")) if norm("Status") in h else None
+        for r in sales_rows[1:6]:
+            print("DEBUG row:",
+                  "status=", cell(r, i_status) if i_status is not None else "?",
+                  "prod=", cell(r, i_prod) if i_prod is not None else "?",
+                  "liquido=", repr(cell(r, i_liq)) if i_liq is not None else "?",
+                  "bruto=", repr(cell(r, i_bru)) if i_bru is not None else "?",
+                  file=sys.stderr)
     data = process(meta_rows, sales_rows)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do
