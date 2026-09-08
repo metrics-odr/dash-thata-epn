@@ -91,6 +91,15 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
 | **Compradores** | `1836439885` | Data · Hora · Status · Produto · Tipo · Comprador(a) · E-mail · Telefone · País · Moeda compra · Valor compra (orig.) · Valor bruto (BRL) · Fat. líquido (USD) · **Fat. líquido (BRL)** · Método pagto · Parcelas · Origem · Origem UTM (bruto) · **Detalhe UTM** |
 
 **Pontos de atenção específicos deste cliente:**
+- **Toggle de moeda (USD/BRL)**: verba do Meta Ads e faturamento deste funil são
+  nativamente em dólar — o toggle "Moeda" na topbar (ao lado do "Imposto Meta") só
+  troca a **exibição** (todo card/tabela/gráfico monetário: Gasto, CPM/CPC/CPV/CPIC,
+  CAC, Faturamento, Ticket); os valores usados nos cálculos (CAC, ROAS etc.)
+  continuam sempre em USD por baixo — só o `brl()` em `build/app.js` converte pela
+  cotação ao formatar. Cotação USD→BRL é buscada automaticamente no navegador
+  (`fetchFxRate()` em `build/app.js`: `api.frankfurter.app`, com fallback para
+  `open.er-api.com`, cacheada 6h em `localStorage` e reaproveitada enquanto a API
+  não responde) — exibida abaixo do toggle ("1 USD = X,XXXX BRL"). Padrão: BRL.
 - **Sem coluna "Impressions"** na aba Meta Ads — o card "Impressões" e as métricas
   derivadas (CPM/CTR) ficam zeradas/"--" (`header_index` não tem fallback posicional
   para `impr` quando o alias não é encontrado — ver `build/build.py`). Não é um bug,

@@ -9,7 +9,13 @@ const MAIN_PREFIX = B.main_product_prefix || '';
 const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
 const nf1=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const brl=v=>(v==null||!isFinite(v))?'-':'R$ '+nf2.format(v);
+const nf4=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
+/* Gasto (Meta Ads) e Faturamento deste funil vêm em USD na planilha. O toggle de
+   moeda só troca a EXIBIÇÃO (símbolo + conversão pela cotação do dia); os valores
+   crus usados nos cálculos (CAC, ROAS etc.) continuam em USD sempre. */
+const brl=v=>{ if(v==null||!isFinite(v)) return '-';
+  if(STATE.currency==='usd') return 'US$ '+nf2.format(v);
+  return 'R$ '+nf2.format(v*(FX_RATE||FX_FALLBACK)); };
 const pct=v=>(v==null||!isFinite(v))?'-':nf2.format(v*100)+'%';
 const intf=v=>(v==null||!isFinite(v))?'-':nf0.format(v);
 const numf=v=>(v==null||!isFinite(v))?'-':nf1.format(v);
@@ -31,12 +37,49 @@ const TODAY = B.today || B.date_max;
 /* ---------------- STATE ---------------- */
 const STATE = {
   page:'geral', from:B.date_min, to:B.date_max, preset:'todo', tax:true,
+  currency: localStorage.getItem('dm_currency') || 'brl',
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
   iaWin: localStorage.getItem('ia_win') || '14d',
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
+
+/* ---------------- cotação USD -> BRL (automática) ---------------- */
+const FX_CACHE_KEY='dm_fx_usd_brl', FX_CACHE_MS=6*60*60*1000; /* 6h */
+const FX_FALLBACK=5.30; /* só usado antes da 1ª cotação carregar (nunca visitou / sem cache / API fora do ar) */
+let FX_RATE=null, FX_STALE=true;
+(function loadFxCache(){
+  try{ const c=JSON.parse(localStorage.getItem(FX_CACHE_KEY)||'null');
+    if(c&&c.rate&&isFinite(c.rate)){ FX_RATE=c.rate; FX_STALE=(Date.now()-(c.ts||0))>FX_CACHE_MS; }
+  }catch(e){}
+})();
+function curRateLabel(){
+  const el=document.getElementById('curRate'); if(!el) return;
+  el.textContent = FX_RATE ? ('1 USD = '+nf4.format(FX_RATE)+' BRL') : 'cotação indisponível';
+}
+function setFxRate(rate){ if(!rate||!isFinite(rate)) return;
+  FX_RATE=rate; FX_STALE=false;
+  try{ localStorage.setItem(FX_CACHE_KEY, JSON.stringify({rate,ts:Date.now()})); }catch(e){}
+  curRateLabel();
+  if(STATE.currency==='brl') renderAll();
+}
+async function fetchFxRate(){
+  try{
+    const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=BRL');
+    if(!r.ok) throw new Error('frankfurter '+r.status);
+    const j=await r.json(); const v=j&&j.rates&&j.rates.BRL;
+    if(!v) throw new Error('sem taxa (frankfurter)');
+    setFxRate(v); return;
+  }catch(e){ /* segue pro fallback */ }
+  try{
+    const r=await fetch('https://open.er-api.com/v6/latest/USD');
+    if(!r.ok) throw new Error('er-api '+r.status);
+    const j=await r.json(); const v=j&&j.rates&&j.rates.BRL;
+    if(v) setFxRate(v);
+  }catch(e){ /* mantém cache (se houver) ou o fallback fixo */ }
+}
+fetchFxRate();
 
 /* active date test: selDays override the De/Até range */
 function dateActive(d){
@@ -804,6 +847,13 @@ document.getElementById('themeBtn').addEventListener('click',()=>{ const dark=do
 
 document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>setPage(n.dataset.page)));
 document.getElementById('taxToggle').addEventListener('click',function(){ STATE.tax=!STATE.tax; this.classList.toggle('on',STATE.tax); renderAll(); });
+function syncCurButtons(){
+  document.getElementById('curUsdBtn').classList.toggle('active', STATE.currency==='usd');
+  document.getElementById('curBrlBtn').classList.toggle('active', STATE.currency==='brl');
+}
+function setCurrency(c){ if(c!==STATE.currency){ STATE.currency=c; localStorage.setItem('dm_currency',c); syncCurButtons(); renderAll(); } }
+document.getElementById('curUsdBtn').addEventListener('click',()=>setCurrency('usd'));
+document.getElementById('curBrlBtn').addEventListener('click',()=>setCurrency('brl'));
 /* seletor de período: abre/fecha popover, aplicar/cancelar, fechar ao clicar fora/Esc */
 document.getElementById('periodBtn').addEventListener('click',e=>{ e.stopPropagation(); ppIsOpen()?ppClose():ppOpen(); });
 document.getElementById('ppApply').addEventListener('click',ppApply);
@@ -845,6 +895,7 @@ document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 
 syncDateInputs(); iaStatusText();
 document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta ON por padrão */
+syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
 setPage(location.hash==='#meta'?'meta':(location.hash==='#rel'?'rel':(location.hash==='#ia'?'ia':'geral')));
 
 /* auto-refresh com cache-bust ~30 min */
