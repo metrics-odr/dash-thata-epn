@@ -282,17 +282,22 @@ def process(meta_rows, sales_rows):
          "name": ["cliente / nome", "comprador(a)", "comprador", "nome", "full_name"],
          "email": ["cliente / e-mail", "e-mail", "email"],
          "prod": ["produto", "product"],
-         # Receita do funil = coluna de faturamento líquido (Valor + orderbumps por
-         # comprador). "fat. liquido (brl)" cobre o cabeçalho real "Fat. líquido
-         # (BRL)" (sem a palavra "faturamento") — tem que vir ANTES de "valor" nos
-         # aliases, senão casa por engano com "Valor compra (orig.)"/"Valor bruto
-         # (BRL)" (que têm "valor" como substring e aparecem antes na planilha).
-         "val": ["fat. liquido (brl)", "faturamento liquido", "faturamento",
+         # Receita do funil = coluna de faturamento líquido EM DÓLAR (Valor +
+         # orderbumps por comprador). Gasto do Meta Ads e todo cálculo interno
+         # (CAC, ROAS, Ticket) são em USD por baixo — só o brl() em app.js
+         # converte pela cotação ao formatar (ver CLAUDE.md "Toggle de moeda").
+         # Por isso "val" TEM que vir de uma coluna em dólar: "fat. liquido
+         # (usd)" cobre o cabeçalho real "Fat. líquido (USD)" — tem que vir
+         # ANTES de "valor" nos aliases, senão casa por engano com "Valor
+         # compra (orig.)" (que tem "valor" como substring e aparece antes na
+         # planilha). NUNCA usar a coluna "(BRL)" aqui: ela é o mesmo valor
+         # reconvertido pra reais e, neste cliente, vem quebrada com "#REF!"
+         # em parte das vendas — além de, mesmo quando preenchida, misturar
+         # moeda com o resto do cálculo (double-conversion: BRL tratado como
+         # USD e depois multiplicado de novo pela cotação na exibição).
+         "val": ["fat. liquido (usd)", "faturamento liquido (usd)",
+                 "faturamento liquido", "faturamento",
                  "valor da venda", "valor", "value", "amount"],
-         # Fallback por linha quando o líquido vem vazio/quebrado (ex.: "#REF!" —
-         # erro de fórmula na planilha do cliente) — usa o valor bruto daquela
-         # venda em vez de contar R$0.
-         "val_bruto": ["valor bruto (brl)", "valor bruto"],
          "utm_content": ["utm content", "utm_content"],
          "utm_campaign": ["utm campaign", "utm_campaign"],
          "utm_medium": ["utm medium", "utm_medium"],
@@ -347,8 +352,6 @@ def process(meta_rows, sales_rows):
             camp = sale_camp
             adset = (det_medium if use_utm_detail else cell(row, sidx["utm_medium"])) or "(sem conjunto)"
         val = to_float(cell(row, sidx["val"]))
-        if not val and sidx["val_bruto"] is not None:
-            val = to_float(cell(row, sidx["val_bruto"]))
         sales.append({
             "d": parse_date(cell(row, sidx["created"])),
             "camp": camp, "adset": adset, "ad": ad,
@@ -466,7 +469,7 @@ def main():
     print("== build ok ==", file=sys.stderr)
     print(f"  periodo : {b['date_min']} -> {b['date_max']}", file=sys.stderr)
     print(f"  meta    : {len(data['meta'])} linhas", file=sys.stderr)
-    print(f"  sales   : {len(data['sales'])} linhas (funil) · Vendas(principal): {vendas} · Fat: R$ {fat:,.2f}", file=sys.stderr)
+    print(f"  sales   : {len(data['sales'])} linhas (funil) · Vendas(principal): {vendas} · Fat: US$ {fat:,.2f}", file=sys.stderr)
     print(f"  out     : {args.out}", file=sys.stderr)
 
 

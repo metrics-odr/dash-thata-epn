@@ -61,8 +61,14 @@
       <div class="cur-toggle" id="curToggle">
         <span class="cur-lbl">Moeda</span>
         <div class="cur-switch">
-          <button type="button" class="cur-opt" id="curUsdBtn" data-cur="usd">🇺🇸 USD</button>
-          <button type="button" class="cur-opt" id="curBrlBtn" data-cur="brl">🇧🇷 BRL</button>
+          <button type="button" class="cur-opt" id="curUsdBtn" data-cur="usd">
+            <svg class="cur-flag" viewBox="0 0 20 14" aria-hidden="true"><rect width="20" height="14" fill="#B22234"/><g fill="#fff"><rect y="1.08" width="20" height="1.08"/><rect y="3.23" width="20" height="1.08"/><rect y="5.38" width="20" height="1.08"/><rect y="7.54" width="20" height="1.08"/><rect y="9.69" width="20" height="1.08"/><rect y="11.85" width="20" height="1.08"/></g><rect width="8" height="7.54" fill="#3C3B6E"/></svg>
+            USD
+          </button>
+          <button type="button" class="cur-opt" id="curBrlBtn" data-cur="brl">
+            <svg class="cur-flag" viewBox="0 0 20 14" aria-hidden="true"><rect width="20" height="14" fill="#009739"/><polygon points="10,1.5 18.5,7 10,12.5 1.5,7" fill="#FEDD00"/><circle cx="10" cy="7" r="3.6" fill="#012169"/></svg>
+            BRL
+          </button>
         </div>
         <span class="cur-rate" id="curRate"></span>
       </div>
