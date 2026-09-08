@@ -158,28 +158,36 @@ ConvCHK (Vendas/Checkouts) · Faturamento · ROAS (Faturamento/Gasto) · Ticket 
   **"Vendas por produto"** (abas Visão Geral e Meta Ads), com contagem e % vs.
   produto principal cada uma.
 - **Atribuição do upsell/downsell ao funil**: pelo **nome do produto**
-  (`UPSELL_PRODUCT_PREFIX = "case de promocao"`), **não** pelo match de UTM contra o
+  (`UPSELL_PRODUCT_PREFIX = "case de promocao"`), não pelo match de UTM contra o
   Meta Ads — na prática essas linhas de upsell/downsell pós-compra costumam vir sem
   `Detalhe UTM` preenchido (não é um novo clique de anúncio, é uma oferta na página
-  de obrigado). Por isso ficam com `meta=0` (não aparecem nos painéis filtrados "só
-  Meta Ads"/Tráfego) mas entram normalmente nos totais da aba Visão Geral e no
-  Faturamento/ROAS do funil. Se um dia a planilha passar a preencher UTM nessas
-  linhas, o match por campanha+anúncio (ver abaixo) passa a valer também para elas.
+  de obrigado). Para **campanha/conjunto/anúncio e o flag `meta`** (usado pelos
+  painéis "só Meta Ads"/Tráfego e pelo Faturamento por campanha/anúncio), o
+  upsell/downsell **herda a atribuição da compra do produto principal do MESMO
+  comprador** (casando por `E-mail`, é a mesma sessão de checkout) — se a compra
+  principal veio de um anúncio real do Meta, o upsell soma no Faturamento daquele
+  anúncio/campanha também; se a compra principal foi orgânica/sem UTM, o upsell
+  fica `meta=0` do mesmo jeito. Se o comprador do upsell não tiver uma compra do
+  produto principal correspondente nos dados (ex.: fora do período lido, ou a
+  própria linha principal não constava na planilha), o upsell ainda entra no
+  Faturamento total (aba Visão Geral) mas fica sem campanha/anúncio (`meta=0`).
 - **Faturamento / ROAS** = soma de **todos os produtos** do funil (produto principal
   + as duas variações de Case de Promoção). **Vendas / CAC / ConvCHK / Ticket** =
   **só** o produto principal (upsell/downsell nunca entram nessas métricas, mesmo
   contando para o Faturamento).
 - Uma venda entra no funil se: é o produto principal **OU** é upsell/downsell dele
-  (`UPSELL_PRODUCT_PREFIX`, ver acima) **OU** a combinação `utm_campaign` +
-  `utm_content` (extraídos de `Detalhe UTM` — ver "Fontes de dados") casa com uma
-  linha real da aba Meta Ads (captura orderbumps que carreguem a UTM do anúncio
-  original). O match de UTM exige campanha **e** anúncio juntos — nomes de anúncio
-  (`AD01`, `AD02`...) se repetem entre campanhas diferentes; casar só pelo nome do
-  anúncio atribuiria a venda à campanha errada. Quando casa, a venda herda a
-  campanha/conjunto **reais do Meta** (fica na mesma linha do gasto nas tabelas).
-  Vendas de outros funis do cliente (planilha tem vários — Imersão Operação
-  Promoção, Profissional Fast Tracker, etc.) ficam de fora por não baterem nem
-  produto, upsell nem UTM. Só conta status pago (`Status` = Completo/Aprovado/...).
+  (`UPSELL_PRODUCT_PREFIX`, ver acima) — nada mais (vendas de outros produtos do
+  cliente, mesmo que por acaso batessem UTM com um anúncio deste funil, ficam de
+  fora; a planilha tem vários funis — Imersão Operação Promoção, Profissional
+  Fast Tracker, etc.). Só conta status pago (`Status` = Completo/Aprovado/...).
+- Match com o Meta Ads (define campanha/conjunto/anúncio reais e o flag `meta`,
+  usado pelos painéis "só Meta Ads"): para o produto principal, é a combinação
+  `utm_campaign` + `utm_content` (extraídos de `Detalhe UTM` — ver "Fontes de
+  dados") casando com uma linha real da aba Meta Ads — exige campanha **e**
+  anúncio juntos, porque nomes de anúncio (`AD01`, `AD02`...) se repetem entre
+  campanhas diferentes e casar só pelo nome do anúncio atribuiria a venda à
+  campanha errada. Para upsell/downsell, é por herança da compra principal do
+  mesmo comprador (ver acima), não pela UTM da própria linha.
 
 ### Imposto Meta Ads
 `TAX_FACTOR = 1.13806` (+13,806%) — imposto padrão que a Meta cobra sobre a verba de
