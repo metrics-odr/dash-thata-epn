@@ -151,6 +151,10 @@ def is_paid(status: str) -> bool:
     return any(k in sn for k in ("pag", "aprov", "paid", "conclu", "complet", "ativ"))
 
 
+def is_active_status(status: str) -> bool:
+    return norm(status) in ("active", "ativo", "ativa")
+
+
 def is_main_product(prod: str) -> bool:
     return norm(prod).startswith(MAIN_PRODUCT_PREFIX)
 
@@ -238,7 +242,14 @@ def process(meta_rows, sales_rows):
          # Meta Ads). Usada na aba Relatórios (Top/Piores anúncios) para linkar o
          # anúncio. Aliases cobrem variações do cabeçalho.
          "link": ["creative instagram permalink", "instagram permalink", "permalink",
-                  "creative link", "link do anuncio", "link do criativo"]},
+                  "creative link", "link do anuncio", "link do criativo"],
+         # Status ATIVO/PAUSADO de cada nível (opcional — planilhas sem essas
+         # colunas simplesmente não mostram o indicativo). Usado só para o
+         # "sinal" visual ao lado do nome nas tabelas de otimização; não afeta
+         # nenhum cálculo/filtro.
+         "campaign_status": ["campaign status", "status da campanha"],
+         "adset_status": ["ad set status", "adset status", "status do conjunto"],
+         "ad_status": ["ad status", "status do anuncio"]},
         # Sem fallback posicional p/ "impr": algumas planilhas não têm Impressions
         # (o build funciona sem, CPM/CTR ficam "--"); com fallback fixo, a ausência
         # da coluna faria "impr" apontar por engano p/ Link Clicks (deslocamento).
@@ -247,6 +258,16 @@ def process(meta_rows, sales_rows):
     )
 
     meta = []
+    # Status (ativo/pausado) mais recente de cada campanha/conjunto/anúncio —
+    # a planilha repete o status em toda linha diária, então guarda-se o de
+    # maior data por nome.
+    camp_status, adset_status, ad_status = {}, {}, {}
+    def _track_status(store, name, day, status):
+        if not status:
+            return
+        prev = store.get(name)
+        if prev is None or (day or "") >= (prev[0] or ""):
+            store[name] = (day, status)
     # (campanha, anúncio) normalizados -> (campanha, conjunto) reais do Meta.
     # A chave inclui a CAMPANHA porque o mesmo nome de anúncio (ex. "AD01") se
     # repete em campanhas diferentes; casar só pelo nome do anúncio atribuiria a
@@ -271,8 +292,12 @@ def process(meta_rows, sales_rows):
         link = cell(row, midx["link"])
         if link and ad not in ad_links:
             ad_links[ad] = link
+        day = parse_date(cell(row, midx["day"]))
+        _track_status(camp_status, camp, day, cell(row, midx["campaign_status"]))
+        _track_status(adset_status, adset, day, cell(row, midx["adset_status"]))
+        _track_status(ad_status, ad, day, cell(row, midx["ad_status"]))
         meta.append({
-            "d": parse_date(cell(row, midx["day"])),
+            "d": day,
             "camp": camp, "adset": adset, "ad": ad,
             "sp": round(to_float(cell(row, midx["spent"])), 4),
             "im": to_float(cell(row, midx["impr"])),
@@ -430,6 +455,12 @@ def process(meta_rows, sales_rows):
         "meta": meta,
         "sales": sales,
         "ad_links": ad_links,
+        # Status ATIVO/PAUSADO (mais recente) de cada campanha/conjunto/anúncio,
+        # usado só p/ o indicativo visual nas tabelas de otimização (não tem
+        # nenhum efeito em cálculo/filtro). Só entram nomes com status conhecido.
+        "camp_active": {k: is_active_status(v[1]) for k, v in camp_status.items()},
+        "adset_active": {k: is_active_status(v[1]) for k, v in adset_status.items()},
+        "ad_active": {k: is_active_status(v[1]) for k, v in ad_status.items()},
         # Briefings do Gestor por período (gerados por IA 1x/dia via Routine e
         # salvos em build/relatorios.json). Preenchido em process()/main via
         # load_briefings(); fica {} se o arquivo não existir.

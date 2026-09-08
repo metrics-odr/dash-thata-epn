@@ -4,6 +4,11 @@ const META = DATA.meta, SALES = DATA.sales, B = DATA.build;
 const TAX = B.tax_factor || 1;
 const MAIN_PRODUCT = B.main_product || 'Produto principal';
 const MAIN_PREFIX = B.main_product_prefix || '';
+/* status ATIVO/PAUSADO (mais recente) por campanha/conjunto/anúncio — só p/ o
+   indicativo visual nas tabelas de otimização (Meta Ads), não afeta cálculos. */
+const CAMP_ACTIVE = DATA.camp_active || {};
+const ADSET_ACTIVE = DATA.adset_active || {};
+const AD_ACTIVE = DATA.ad_active || {};
 
 /* ---------------- format ---------------- */
 const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
@@ -153,11 +158,12 @@ function renderTable(cfg){
   }).join('')+'</tr></thead>';
   let tbody='<tbody>'+rows.map(r=>{
     const sel = cfg.selectable && cfg.selSet && cfg.selSet.has(r.k);
-    const tds=cfg.cols.map(c=>{
+    const tds=cfg.cols.map((c,ci)=>{
       const v=r.cells[c.key]; let bg='';
       if(c.heat && ext[c.key]) bg=`background:${heat(v,ext[c.key][0],ext[c.key][1],c.heat)}`;
       const cls=(c.type==='dim'?'dim':'');
-      return `<td class="${cls}" style="${bg}">${fmt(c.type,v)}</td>`;
+      const dot = (ci===0 && cfg.statusMap) ? statusDot(cfg.statusMap[r.k]) : '';
+      return `<td class="${cls}" style="${bg}">${dot}${fmt(c.type,v)}</td>`;
     }).join('');
     return `<tr class="${sel?'sel':''}" data-k="${encodeURIComponent(r.k)}">${tds}</tr>`;
   }).join('')+'</tbody>';
@@ -194,9 +200,15 @@ function renderTable(cfg){
     });
   }
 }
+/* status ATIVO/PAUSADO ao lado do nome (campanha/conjunto/anúncio) — só o
+   indicativo visual; não altera dado, ordenação ou filtro nenhum. */
+function statusDot(active){
+  if(active==null) return '';
+  return active ? '<span class="status-dot on" title="Ativo"></span>' : '<span class="status-dot off" title="Pausado"></span>';
+}
 /* Heatmap por coluna: cor FIXA por métrica (definida em identidade-visual.css),
    só a OPACIDADE varia com o valor (maior valor = mais vibrante). */
-const HEAT_HUE={gasto:'--heat-gasto', fat:'--heat-fat', roas:'--heat-roas'};
+const HEAT_HUE={gasto:'--heat-gasto', fat:'--heat-fat', roas:'--heat-roas', vendas:'--heat-vendas'};
 function heat(v,lo,hi,kind){
   if(v==null||!isFinite(v)||hi===lo||!HEAT_HUE[kind]) return 'transparent';
   const t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
@@ -305,14 +317,14 @@ const METRIC_COLS=[
   {key:'cr',label:'CR',type:'pct'},
   {key:'vischk',label:'VisCHK',type:'pct'},
   {key:'convchk',label:'ConvCHK',type:'pct'},
-  {key:'vendas',label:'Vendas',type:'int'},
+  {key:'vendas',label:'Vendas',type:'int',heat:'vendas'}, /* heatmap azul */
   {key:'cac',label:'CAC',type:'brl'},
   {key:'fat',label:'Faturamento',type:'brl',heat:'fat'},  /* heatmap verde */
   {key:'ticket',label:'Ticket',type:'brl'},
   {key:'roas',label:'ROAS',type:'roas',heat:'roas'},      /* heatmap amarelo */
 ];
 const DAILY_COLS=[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:64}].concat(METRIC_COLS);
-const HCOLS=[{key:'dim',label:'',type:'dim',big:true}].concat(METRIC_COLS.map(c=>{const o={...c}; delete o.heat; return o;}));
+const HCOLS=[{key:'dim',label:'',type:'dim',big:true}].concat(METRIC_COLS);
 function metricCells(x,d){
   return {gasto:d.gasto, cpm:d.cpm, ctr:d.ctr, cr:d.cr, vischk:d.vischk, convchk:d.convchk,
     vendas:x.vendas, cac:d.cac, fat:x.fat, ticket:d.ticket, roas:d.roas};
@@ -456,11 +468,11 @@ function renderMeta(){
   function totRowOf(tt){const dv=derive(tt);return Object.assign({dim:null}, metricCells(tt,dv));}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
   renderTable({id:'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fS,Sc.fM,'camp')), total:totRowOf(totals(Sc.fS,Sc.fM)),
-    selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:CAMP_ACTIVE, selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fS,Sa.fM,'adset')), total:totRowOf(totals(Sa.fS,Sa.fM)),
-    selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:ADSET_ACTIVE, selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAd', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fS,Sd.fM,'ad')), total:totRowOf(totals(Sd.fS,Sd.fM)),
-    selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:AD_ACTIVE, selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra
