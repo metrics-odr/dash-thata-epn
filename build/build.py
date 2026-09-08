@@ -442,6 +442,9 @@ def main():
 
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
+    if os.environ.get("DEBUG_HEADERS"):
+        print("DEBUG meta header:", meta_rows[0] if meta_rows else None, file=sys.stderr)
+        print("DEBUG sales header:", sales_rows[0] if sales_rows else None, file=sys.stderr)
     data = process(meta_rows, sales_rows)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do
