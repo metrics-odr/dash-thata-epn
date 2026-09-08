@@ -22,9 +22,9 @@ from __future__ import annotations
 # GID_META / GID_SALES: o número depois de "gid=" na URL de cada aba.
 # A planilha precisa estar com o link público em modo "Qualquer pessoa com
 # o link pode visualizar" (o build lê via export CSV, somente leitura).
-SPREADSHEET_ID = ""   # ex.: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefg"
-GID_META = ""          # ex.: "111111111"  (aba Meta Ads)
-GID_SALES = ""         # ex.: "222222222"  (aba Compradores)
+SPREADSHEET_ID = "1QX5QRvFzeyloDurQLxaXTO3c3h6bMr3wskHVe0CiyYM"
+GID_META = "1195145852"          # aba Meta Ads
+GID_SALES = "1836439885"         # aba Compradores
 
 # ==========================================================================
 # 2) REGRAS DE NEGÓCIO
@@ -32,27 +32,27 @@ GID_SALES = ""         # ex.: "222222222"  (aba Compradores)
 # Fator de imposto aplicado sobre o gasto do Meta Ads quando o toggle
 # "Imposto Meta" estiver ligado na dashboard. Use 1.0 se o cliente não tiver
 # imposto a considerar.
-TAX_FACTOR = 1.0   # ex.: 1.13806 (equivale a +13,806%)
+TAX_FACTOR = 1.0   # ex.: 1.13806 (equivale a +13,806%) — cliente não informou imposto
 
 # Produto principal do funil (base de Vendas/CAC/ConvCHK/Ticket). Casamento
 # por PREFIXO, sem acento e em minúsculas, sobre o nome do produto que
 # aparece na coluna "Produto" da planilha de Compradores.
-MAIN_PRODUCT_PREFIX = ""   # ex.: "nome do produto" (produto "Nome do Produto")
+MAIN_PRODUCT_PREFIX = "efeito proximo nivel"   # produto "Efeito Próximo Nível"
 
 # A planilha de Compradores tem uma coluna de status de pagamento confiável
 # (ex.: "pago"/"aprovado" vs. "aberto"/"cancelado")? Se SIM, deixe False e o
 # build filtra por is_paid(). Se a planilha é uma lista de COMPRADORES onde
 # toda linha já é uma compra concretizada (sem coluna de status utilizável),
 # deixe True para contar todas as linhas como venda paga.
-COUNT_ALL_AS_PAID = True
+COUNT_ALL_AS_PAID = False   # planilha tem coluna "Status" confiável (Completo/Aprovado/...)
 
 # ==========================================================================
 # 3) RÓTULOS EXIBIDOS NA INTERFACE
 # ==========================================================================
-CLIENT_NAME = ""    # ex.: "Nome do Cliente" — aparece no topo do menu lateral
-CLIENT_SUB = ""     # ex.: "VSL Nome do Funil" — subtítulo abaixo do nome
-TAX_LABEL = ""       # ex.: "Imposto Meta ×1,13806" — rótulo do toggle de imposto
-MAIN_PRODUCT = ""    # ex.: "Nome do Produto" — nome de exibição do produto principal
+CLIENT_NAME = "Thata Junqueira"       # aparece no topo do menu lateral
+CLIENT_SUB = "Efeito Próximo Nível"   # subtítulo abaixo do nome
+TAX_LABEL = "Imposto Meta"            # TAX_FACTOR=1.0 (sem imposto informado) -> toggle não altera valores
+MAIN_PRODUCT = "Efeito Próximo Nível" # nome de exibição do produto principal
 
 # ==========================================================================
 # 4) METAS (aba Relatórios) — código de cor de CAC/ROAS
