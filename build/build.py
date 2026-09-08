@@ -193,6 +193,22 @@ def cell(row, i):
     return (row[i] or "").strip()
 
 
+# Algumas planilhas de Compradores não têm utm_campaign/utm_medium/utm_content em
+# colunas próprias — só um campo único concatenado (ex. "Detalhe UTM"). Nesses
+# casos, o padrão observado é: os "|" que fazem parte do NOME da campanha/conjunto
+# (convenção do cliente de usar " | " como separador visual dentro do nome) vêm
+# sempre com espaço nos dois lados; o "|" que separa de fato um parâmetro UTM do
+# próximo não tem espaço nos dois lados. Faz o split só nesse segundo tipo.
+_UTM_DETAIL_SPLIT = re.compile(r"(?<!\s)\|(?!\s)")
+
+
+def split_utm_detail(raw: str) -> tuple[str, str, str, str]:
+    """"medium|campaign|term|content" (ordem observada: Ad Set|Campaign|Posicionamento|Ad Name)."""
+    parts = [p.strip() for p in _UTM_DETAIL_SPLIT.split(raw or "")]
+    parts += [""] * (4 - len(parts))
+    return parts[0], parts[1], parts[2], parts[3]
+
+
 # --------------------------------------------------------------------------- #
 # Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
@@ -214,7 +230,10 @@ def process(meta_rows, sales_rows):
          # anúncio. Aliases cobrem variações do cabeçalho.
          "link": ["creative instagram permalink", "instagram permalink", "permalink",
                   "creative link", "link do anuncio", "link do criativo"]},
-        {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4, "impr": 5,
+        # Sem fallback posicional p/ "impr": algumas planilhas não têm Impressions
+        # (o build funciona sem, CPM/CTR ficam "--"); com fallback fixo, a ausência
+        # da coluna faria "impr" apontar por engano p/ Link Clicks (deslocamento).
+        {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4,
          "clicks": 6, "pv": 7, "ck": 8},
     )
 
@@ -260,15 +279,22 @@ def process(meta_rows, sales_rows):
     sidx = header_index(
         sheader,
         {"created": ["data de criacao", "data", "created", "created_time"],
-         "name": ["cliente / nome", "nome", "full_name"],
+         "name": ["cliente / nome", "comprador(a)", "comprador", "nome", "full_name"],
          "email": ["cliente / e-mail", "e-mail", "email"],
          "prod": ["produto", "product"],
-         # Receita do funil = coluna "Faturamento" (Valor + orderbumps por comprador),
-         # por isso "faturamento" vem ANTES de "valor" nos aliases.
-         "val": ["faturamento", "valor da venda", "valor", "value", "amount"],
+         # Receita do funil = coluna de faturamento líquido (Valor + orderbumps por
+         # comprador). "fat. liquido (brl)" cobre o cabeçalho real "Fat. líquido
+         # (BRL)" (sem a palavra "faturamento") — tem que vir ANTES de "valor" nos
+         # aliases, senão casa por engano com "Valor compra (orig.)"/"Valor bruto
+         # (BRL)" (que têm "valor" como substring e aparecem antes na planilha).
+         "val": ["fat. liquido (brl)", "faturamento liquido", "faturamento",
+                 "valor da venda", "valor", "value", "amount"],
          "utm_content": ["utm content", "utm_content"],
          "utm_campaign": ["utm campaign", "utm_campaign"],
          "utm_medium": ["utm medium", "utm_medium"],
+         # Fallback p/ planilhas sem colunas UTM próprias: 1 campo concatenado
+         # (ver split_utm_detail acima).
+         "utm_detail": ["detalhe utm", "utm detail", "detalhe do utm"],
          "status": ["status"]},
         # Fallback posicional só p/ colunas que existem nesta planilha
         # (Produto·Nome·Email·Data·Valor·Taxas·Faturamento). Sem fallback p/
@@ -277,6 +303,11 @@ def process(meta_rows, sales_rows):
         # UTM nomeadas, o match por nome acima as detecta normalmente.
         {"created": 3, "name": 1, "email": 2, "prod": 0, "val": 6},
     )
+
+    # Se não há colunas utm_campaign/utm_content nomeadas mas há um campo único
+    # ("Detalhe UTM"), usa o split por linha (ver split_utm_detail).
+    use_utm_detail = (sidx["utm_campaign"] is None and sidx["utm_content"] is None
+                       and sidx["utm_detail"] is not None)
 
     sales = []
     for row in sales_rows[1:]:
@@ -287,11 +318,13 @@ def process(meta_rows, sales_rows):
         if not COUNT_ALL_AS_PAID and not is_paid(cell(row, sidx["status"])):
             continue
         prod = cell(row, sidx["prod"])
+        if use_utm_detail:
+            det_medium, det_campaign, _det_term, det_content = split_utm_detail(cell(row, sidx["utm_detail"]))
         # O identificador do anúncio no Meta (Ad Name = "AD01", "AD02"...) vem do
         # UTM Content. O UTM Term carrega o POSICIONAMENTO (Instagram_Reels/Feed/
         # Stories), não o anúncio — por isso o match é pelo UTM Content.
-        ad = cell(row, sidx["utm_content"]) or "(sem anúncio)"
-        sale_camp = cell(row, sidx["utm_campaign"]) or "(sem campanha)"
+        ad = (det_content if use_utm_detail else cell(row, sidx["utm_content"])) or "(sem anúncio)"
+        sale_camp = (det_campaign if use_utm_detail else cell(row, sidx["utm_campaign"])) or "(sem campanha)"
         main = is_main_product(prod)
         # Match com o Meta = campanha + anúncio juntos (o mesmo Ad Name se repete
         # entre campanhas; casar só pelo anúncio atribui a venda à campanha errada).
@@ -308,7 +341,7 @@ def process(meta_rows, sales_rows):
             camp, adset = meta_hit
         else:
             camp = sale_camp
-            adset = cell(row, sidx["utm_medium"]) or "(sem conjunto)"
+            adset = (det_medium if use_utm_detail else cell(row, sidx["utm_medium"])) or "(sem conjunto)"
         sales.append({
             "d": parse_date(cell(row, sidx["created"])),
             "camp": camp, "adset": adset, "ad": ad,

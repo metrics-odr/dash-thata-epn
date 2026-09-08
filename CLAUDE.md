@@ -28,7 +28,7 @@ Ordem para colocar um cliente novo no ar. Cada item aponta o arquivo e o marcado
 4. [ ] **`config.js`** (raiz do repo) — copie `config.example.js` para
    `config.js` e preencha `GITHUB_USERNAME`, `GITHUB_REPOSITORY`,
    `PROJECT_NAME`. Depois substitua manualmente os placeholders
-   `<GITHUB_USERNAME>`/`<GITHUB_REPOSITORY>` que aparecem em `SETUP-CRON.md` e
+   `metrics-odr`/`dash-thata-epn` que aparecem em `SETUP-CRON.md` e
    `README.md` pelos mesmos valores (são docs Markdown estáticos, a
    substituição não é automática).
 5. [ ] **`SETUP-CRON.md`** — depois do passo acima, gere um **token
@@ -72,7 +72,7 @@ via CDN) publicado no **GitHub Pages**, que cruza o gerenciador **Meta Ads** com
 de **Compradores** e se atualiza a cada ~30 min (build na nuvem via GitHub Actions,
 disparado pelo cron-job.org). **Somente leitura** das planilhas.
 
-- **URL pública:** `https://<GITHUB_USERNAME>.github.io/<GITHUB_REPOSITORY>/`
+- **URL pública:** `https://metrics-odr.github.io/dash-thata-epn/`
   (preencha `config.js` — ver checklist acima)
 - **Cliente/projeto:** preencher em `build/config.py` (`CLIENT_NAME`/`CLIENT_SUB`)
 - **Tipo de funil:** VSL / tráfego direto (não há etapa de Leads/MQL) —
@@ -80,29 +80,37 @@ disparado pelo cron-job.org). **Somente leitura** das planilhas.
 
 ## Fontes de dados (Google Sheets)
 
-> Preencha esta seção com os dados da planilha real do cliente depois de
-> configurar `build/config.py` (item 2 do checklist).
+Spreadsheet ID: `1QX5QRvFzeyloDurQLxaXTO3c3h6bMr3wskHVe0CiyYM` (`SPREADSHEET_ID` em
+`build/config.py`) — as duas abas abaixo estão na mesma planilha (leitura via export
+CSV). É a planilha-mestre de vários funis do cliente; o build filtra só o que
+pertence a este (produto principal + par campanha/anúncio batendo com a aba Meta Ads).
 
-Spreadsheet ID: preenchido em `SPREADSHEET_ID` (`build/config.py`) — as duas abas
-abaixo ficam, por padrão, na mesma planilha (leitura via export CSV).
-
-| Aba | gid | Colunas usadas (exemplo — ajuste à planilha real) |
+| Aba | gid | Colunas reais |
 |-----|-----|----------------|
-| **Meta Ads** | `GID_META` | Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent · Impressions · Link Clicks · Landing Page Views · Checkouts Initiated |
-| **Compradores** | `GID_SALES` | Produto · Nome · Email · Data · Valor · **Faturamento** (se houver) · utm_source · utm_medium · utm_content · utm_term · utm_campaign · Status · … |
+| **Meta Ads** | `1195145852` | Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent · Link Clicks · Landing Page Views · Checkouts Initiated · 3-Second Video Views · Video Watches at 50% · Ad ID · Ad Status · Creative Instagram Permalink |
+| **Compradores** | `1836439885` | Data · Hora · Status · Produto · Tipo · Comprador(a) · E-mail · Telefone · País · Moeda compra · Valor compra (orig.) · Valor bruto (BRL) · Fat. líquido (USD) · **Fat. líquido (BRL)** · Método pagto · Parcelas · Origem · Origem UTM (bruto) · **Detalhe UTM** |
 
-**Pontos de atenção ao configurar um cliente novo** (verifique contra a planilha real):
-- **Coluna de receita**: por padrão o alias de `val` prioriza `faturamento` sobre
-  `valor` (`header_index` em `build/build.py`) — confirme qual coluna representa o
-  valor líquido/bruto correto para este cliente e ajuste o alias se necessário.
-- **Coluna de status de pagamento**: se a planilha tiver uma coluna confiável de
-  status pago/aprovado, deixe `COUNT_ALL_AS_PAID = False` em `build/config.py`
-  (o build filtra por `is_paid()`). Se for uma lista de compradores onde toda
-  linha já é uma compra concretizada, deixe `True`.
-- **Identificador do anúncio**: confirme em qual coluna UTM o cliente manda o
-  nome do anúncio (`Ad Name` real do Meta) — muitas vezes é `UTM Content`, não
-  `UTM Term` (que costuma carregar o *posicionamento*: Reels/Feed/Stories). O
-  match Meta↔venda deve usar essa coluna.
+**Pontos de atenção específicos deste cliente:**
+- **Sem coluna "Impressions"** na aba Meta Ads — o card "Impressões" e as métricas
+  derivadas (CPM/CTR) ficam zeradas/"--" (`header_index` não tem fallback posicional
+  para `impr` quando o alias não é encontrado — ver `build/build.py`). Não é um bug,
+  é a planilha real deste cliente.
+- **Coluna de receita**: `val` usa `Fat. líquido (BRL)` (alias `faturamento`, prioridade
+  sobre `valor`) — é a receita líquida em reais, já com taxas de gateway descontadas.
+- **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
+  `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`.
+- **Sem colunas UTM separadas** (não há `utm_campaign`/`utm_medium`/`utm_content`
+  próprias) — só o campo único **`Detalhe UTM`**, com os 4 parâmetros concatenados
+  por `|` (ex.: `AUTO | ALL | Aberto Adv|EPN | E4-VEN | P1-FRIO | CBO | 2026-08-30 |
+  Teste de Ads|Instagram_Feed|AD01`). `build/build.py` faz o *split* separando só nos
+  `|` que **não têm espaço nos dois lados** (os `|` internos dos nomes de campanha/
+  conjunto, no padrão deste cliente, sempre vêm com espaço ao redor — ` | ` — então não
+  são cortados) — dá `utm_medium | utm_campaign | utm_term | utm_content`, testado e
+  batendo com `Ad Set Name`/`Campaign Name`/`Ad Name` reais da aba Meta Ads. Se o
+  cliente mudar a convenção de nomenclatura (deixar de usar ` | ` dentro dos nomes),
+  esse split pode quebrar — revalidar comparando `Detalhe UTM` com a aba Meta Ads.
+- **Identificador do anúncio**: `Ad Name` vem do 4º segmento (`utm_content`), não do
+  3º (`utm_term`, que carrega o posicionamento — `Instagram_Feed` no exemplo acima).
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
@@ -114,31 +122,44 @@ Checkouts · CPIC · VisCHK (Checkouts/PageViews) · Vendas · CAC (Gasto/Vendas
 ConvCHK (Vendas/Checkouts) · Faturamento · ROAS (Faturamento/Gasto) · Ticket (Faturamento/Vendas).
 
 ### Produto principal / atribuição
-- **Produto principal** = `MAIN_PRODUCT_PREFIX` (definido em `build/config.py`). Base de
-  **Vendas / CAC / ConvCHK / Ticket**.
-- **Faturamento / ROAS** = soma de **todos os produtos** do funil (orderbumps/upsells).
-- Uma venda entra no funil se: é o produto principal **OU** a combinação **`UTM Campaign`
-  + `UTM Content`** (campanha + anúncio) casa com uma linha real do Meta (captura
-  orderbumps/upsells que carregam a UTM do anúncio). O match exige campanha **e**
-  anúncio juntos — nomes de anúncio (`AD01`, `AD02`...) podem se repetir entre campanhas
-  diferentes; casar só pelo nome do anúncio atribuiria a venda à campanha errada. Quando
-  casa, a venda herda a campanha/conjunto **reais do Meta** (fica na mesma linha do
-  gasto nas tabelas). Vendas de outros funis (UTM/produto não relacionados) ficam de
-  fora. Só conta status pago.
-- Se não houver coluna de Receita, não há Receita/ROAS/Ticket — ajuste o texto desta
-  seção se o cliente novo tiver uma regra diferente.
+- **Produto principal** = `MAIN_PRODUCT_PREFIX = "efeito proximo nivel"` (produto
+  **Efeito Próximo Nível**). Base de **Vendas / CAC / ConvCHK / Ticket**.
+- O funil tem 3 ofertas no total: **Efeito Próximo Nível** (produto principal) e,
+  como upsell pós-compra, **Case de Promoção** em 2 variações de preço — a oferta
+  inicial (~USD 90) e, se recusada, uma versão mais barata (~USD 40). Ambas aparecem
+  com o mesmo texto de produto (`Case de Promoção`) na coluna `Produto`; o preço
+  (`Fat. líquido (USD)`) é o que distingue qual das duas foi aceita — não há coluna
+  separada para USL/DSL na planilha. O painel **"Vendas por produto"** (abas Visão
+  Geral e Meta Ads) já mostra as duas linhas separadamente quando os textos de
+  `Produto` diferem; como aqui o texto é idêntico para as duas variações de preço,
+  elas somam numa única linha "Case de Promoção" nesse painel (nº de vendas e % vs.
+  produto principal) — não dá para separar USL de DSL sem uma coluna própria na
+  planilha para o tipo de oferta.
+- **Faturamento / ROAS** = soma de **todos os produtos** do funil (produto principal
+  + as duas variações de Case de Promoção).
+- Uma venda entra no funil se: é o produto principal **OU** a combinação
+  `utm_campaign` + `utm_content` (extraídos de `Detalhe UTM` — ver "Fontes de dados")
+  casa com uma linha real da aba Meta Ads (captura os upsells de Case de Promoção,
+  que carregam a UTM do anúncio original). O match exige campanha **e** anúncio
+  juntos — nomes de anúncio (`AD01`, `AD02`...) se repetem entre campanhas diferentes;
+  casar só pelo nome do anúncio atribuiria a venda à campanha errada. Quando casa, a
+  venda herda a campanha/conjunto **reais do Meta** (fica na mesma linha do gasto nas
+  tabelas). Vendas de outros funis do cliente (planilha tem vários — Imersão Operação
+  Promoção, Profissional Fast Tracker, etc.) ficam de fora por não baterem nem produto
+  nem UTM. Só conta status pago (`Status` = Completo/Aprovado/...).
 
 ### Imposto Meta Ads
-Toggle ON aplica o `TAX_FACTOR` (definido em `build/config.py`) sobre os custos do Meta.
+Cliente não informou imposto — `TAX_FACTOR = 1.0` (toggle vira no-op). Se houver
+imposto sobre os custos do Meta, ajustar `TAX_FACTOR`/`TAX_LABEL` em `build/config.py`.
 
 ### Convenções de campanha
-`Campaign Name = utm_campaign`, `Ad Set Name = utm_medium`, `Ad Name = utm_content`
-(⚠️ **confira se não é** `utm_term` no caso deste cliente — essa coluna costuma
-carregar o **posicionamento** do anúncio, não o nome dele — ver "Pontos de atenção"
-acima). O match com o Meta (campo `meta`, usado pela aba Meta Ads) exige
-`utm_campaign`+`utm_content` batendo com uma linha real do Meta; quando casa, a venda
-herda a campanha/conjunto reais do Meta (para o gasto e a venda caírem na mesma linha
-das tabelas).
+`Campaign Name = utm_campaign`, `Ad Set Name = utm_medium`, `Ad Name = utm_content`,
+posicionamento (`Instagram_Feed`/`Reels`/...) = `utm_term` — confirmado batendo
+`Detalhe UTM` da aba Compradores contra a aba Meta Ads real deste cliente (ver
+"Fontes de dados" acima para o parsing do campo concatenado). O match com o Meta
+(campo `meta`, usado pela aba Meta Ads) exige `utm_campaign`+`utm_content` batendo
+com uma linha real do Meta; quando casa, a venda herda a campanha/conjunto reais do
+Meta (para o gasto e a venda caírem na mesma linha das tabelas).
 
 ## IA Insights
 
