@@ -41,7 +41,6 @@ const STATE = {
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
-  iaWin: localStorage.getItem('ia_win') || '14d',
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
 
@@ -591,152 +590,7 @@ function renderRelatorios(){
   renderRelBrief();
 }
 
-/* ---------------- PAGE 3: IA Insights ---------------- */
-const r2=v=>(v==null||!isFinite(v))?null:Math.round(v*100)/100;
-const r4=v=>(v==null||!isFinite(v))?null:Math.round(v*10000)/10000;
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-function iaMetricRow(x,d){
-  return {gasto:r2(d.gasto),impressoes:x.im,cpm:r2(d.cpm),cliques:x.cl,cpc:r2(d.cpc),ctr:r4(d.ctr),
-    page_views:x.pv,cpv:r2(d.cpv),cr:r4(d.cr),checkouts:x.ck,cpic:r2(d.cpic),vischk:r4(d.vischk),
-    convlp:r4(d.convlp),vendas:x.vendas,cac:r2(d.cac),convchk:r4(d.convchk),
-    faturamento:r2(x.fat),roas:r2(d.roas),ticket:r2(d.ticket)};
-}
-/* janela própria da IA — independente do filtro de período das outras abas */
-const IA_WINDOWS=[['3d',3,'3 dias'],['7d',7,'7 dias'],['14d',14,'14 dias'],['30d',30,'30 dias']];
-function iaWinDays(){ const w=IA_WINDOWS.find(x=>x[0]===STATE.iaWin); return w?w[1]:14; }
-function iaRenderWin(){
-  document.getElementById('iaWin').innerHTML=IA_WINDOWS.map(w=>
-    `<button class="chip ${STATE.iaWin===w[0]?'active':''}" data-w="${w[0]}">${w[2]}</button>`).join('');
-  document.querySelectorAll('#iaWin .chip').forEach(c=>c.addEventListener('click',()=>{
-    STATE.iaWin=c.dataset.w; localStorage.setItem('ia_win',STATE.iaWin); iaRenderWin();
-  }));
-}
-function iaSumBuckets(arr){ const a=newBucket(); arr.forEach(x=>{a.sp+=x.sp;a.im+=x.im;a.cl+=x.cl;a.pv+=x.pv;a.ck+=x.ck;a.vendas+=x.vendas;a.vendasM+=x.vendasM;a.fat+=x.fat;}); return a; }
-function iaPctDelta(a,b){ return (a==null||b==null||!isFinite(a)||!isFinite(b)||b===0)?null:+(((a-b)/b)*100).toFixed(1); }
-function iaCmp(dR,dP,k){ return {recente:r2(dR[k]), anterior:r2(dP[k]), variacao_pct:iaPctDelta(dR[k],dP[k])}; }
-function iaBuildData(){
-  const winDays=iaWinDays(), from=addDays(TODAY,-(winDays-1)), to=TODAY;
-  const inWin=d=>d && d>=from && d<=to;
-  const fM=META.filter(m=>inWin(m.d)), fSall=SALES.filter(s=>inWin(s.d)), fSmeta=fSall.filter(s=>s.meta);
-  const t=totals(fSall,fM), tm=totals(fSmeta,fM);
-  const byProd={}; fSmeta.forEach(s=>{byProd[s.prod]=(byProd[s.prod]||0)+1;});
-
-  /* --- séries diárias e janelas de tendência (escopo Meta) --- */
-  const dd=daily(fSmeta,fM);                              // buckets diários (asc)
-  const serie=dd.slice(-90).map(x=>{const dv=derive(x); return {d:x.d, gasto:r2(dv.gasto), cpm:r2(dv.cpm),
-    ctr:r4(dv.ctr), cr:r4(dv.cr), vischk:r4(dv.vischk), convchk:r4(dv.convchk),
-    vendas:x.vendas, cac:r2(dv.cac), fat:r2(x.fat), roas:r2(dv.roas)};});
-  const days=dd.map(x=>x.d), n=days.length, half=Math.max(1,Math.floor(n/2));
-  let comparativo=null, recentSet=null, prevSet=null;
-  if(n>=2){
-    recentSet=new Set(days.slice(n-half));
-    prevSet=new Set(days.slice(Math.max(0,n-2*half), n-half));
-    const R=iaSumBuckets(dd.filter(x=>recentSet.has(x.d))), P=iaSumBuckets(dd.filter(x=>prevSet.has(x.d)));
-    const dR=derive(R), dP=derive(P);
-    comparativo={
-      dias_por_janela:half,
-      janela_recente:{de:days[n-half], ate:days[n-1]},
-      janela_anterior:prevSet.size?{de:days[Math.max(0,n-2*half)], ate:days[n-half-1]}:null,
-      cpm:iaCmp(dR,dP,'cpm'), ctr:iaCmp(dR,dP,'ctr'), cr:iaCmp(dR,dP,'cr'),
-      vischk:iaCmp(dR,dP,'vischk'), convchk:iaCmp(dR,dP,'convchk'),
-      cac:iaCmp(dR,dP,'cac'), roas:iaCmp(dR,dP,'roas'), gasto:iaCmp(dR,dP,'gasto'),
-      vendas:{recente:R.vendas, anterior:P.vendas, variacao_pct:iaPctDelta(R.vendas,P.vendas)},
-    };
-  }
-  /* top estruturas + tendência recente vs anterior */
-  function topTrend(dim,lim){
-    const map=buildAgg(fSmeta,fM,dim);
-    const aggR = recentSet ? buildAgg(fSmeta.filter(r=>recentSet.has(r.d)), fM.filter(r=>recentSet.has(r.d)), dim) : {};
-    const aggP = prevSet   ? buildAgg(fSmeta.filter(r=>prevSet.has(r.d)),   fM.filter(r=>prevSet.has(r.d)),   dim) : {};
-    return Object.entries(map).sort((a,b)=>b[1].sp-a[1].sp).slice(0,lim).map(([nome,a])=>{
-      const row=Object.assign({nome}, iaMetricRow(a,derive(a)));
-      if(comparativo){
-        const dvR=aggR[nome]?derive(aggR[nome]):null, dvP=aggP[nome]?derive(aggP[nome]):null;
-        row.tendencia={
-          cac_recente:dvR?r2(dvR.cac):null, cac_anterior:dvP?r2(dvP.cac):null,
-          roas_recente:dvR?r2(dvR.roas):null, roas_anterior:dvP?r2(dvP.roas):null,
-          gasto_recente:dvR?r2(dvR.gasto):null, gasto_anterior:dvP?r2(dvP.gasto):null };
-      }
-      return row;
-    });
-  }
-
-  return {
-    periodo:{de:from,ate:to,janela_ia:STATE.iaWin,dias_no_periodo:n},
-    imposto_meta_aplicado: STATE.tax,
-    obs:"Taxas em fração 0-1. cr=PageViews/Cliques; vischk=Checkouts/PageViews; convlp=Vendas/PageViews; convchk=Vendas/Checkouts. total_todas_vendas inclui vendas orgânicas; conversões e estruturas consideram apenas Meta Ads. Produto principal = "+MAIN_PRODUCT+". comparativo_periodo compara a janela recente vs a anterior (mesmo nº de dias) — use para detectar SATURAÇÃO/fadiga (ex.: CPM subindo + CTR/ROAS caindo). serie_diaria = evolução dia a dia. variacao_pct = variação % recente vs anterior. Cada estrutura traz 'tendencia' (recente vs anterior).",
-    total_todas_vendas: iaMetricRow(t,derive(t)),
-    total_meta_ads: iaMetricRow(tm,derive(tm)),
-    comparativo_periodo: comparativo,
-    serie_diaria: serie,
-    campanhas: topTrend('camp',10),
-    conjuntos: topTrend('adset',10),
-    anuncios: topTrend('ad',15),
-    vendas_por_produto: Object.entries(byProd).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([produto,vendas])=>({produto,vendas})),
-  };
-}
-function iaBackendUrl(){ return iaNormUrl(localStorage.getItem('ia_backend')||B.ia_worker_url||''); }
-function iaStatusText(){
-  const b=iaBackendUrl(), p=localStorage.getItem('ia_pass');
-  document.getElementById('iaStatus').textContent = b ? '' : 'backend não configurado — clique em Configurar';
-  document.getElementById('iaGen').disabled = !(b&&p);
-}
-function iaShow(html){ document.getElementById('iaCards').innerHTML=html; }
-function iaFmtDate(ts){ try{ return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(_){ return ''; } }
-function iaRenderCards(insights,usage,at,from,to){
-  if(!insights.length){ iaShow('<div class="ia-empty">A IA não retornou insights.</div>'); return; }
-  const stamp = at ? `<div class="ia-empty" style="grid-column:1/-1;text-align:left">Gerado em ${iaFmtDate(at)}${from&&to?` · janela ${esc(from)} a ${esc(to)}`:''}</div>` : '';
-  const sev=s=>['alta','media','baixa'].includes(String(s))?s:'baixa';
-  const cards=insights.map(i=>{
-    const s=sev(i.severidade); let verba='';
-    if(i.verba && i.verba.acao && i.verba.acao!=='manter'){
-      const v=i.verba, pct=(v.percentual!=null?(' '+Math.abs(v.percentual)+'%'):'');
-      verba=`<div class="ins-verba">💰 <b>Verba:</b> ${esc(v.acao)}${pct} ${v.nivel_ajuste?('no '+esc(v.nivel_ajuste)):''}${v.observacao?(' — '+esc(v.observacao)):''}<span class="ins-apply">Peça no chat para eu aplicar no Meta Ads.</span></div>`;
-    }
-    return `<div class="ins-card sev-${s}">
-      <div class="ins-head"><span class="ins-badge">${esc(i.nivel||'funil')} · ${esc(i.metrica||'')}</span><span class="ins-sev">${esc(s)}</span></div>
-      <div class="ins-title">${esc(i.titulo||'')}</div>
-      <div class="ins-diag">${esc(i.diagnostico||'')}</div>
-      <div class="ins-rec"><b>Ação:</b> ${esc(i.recomendacao||'')}</div>
-      ${i.estrutura?`<div class="ins-struct">Estrutura: ${esc(i.estrutura)}</div>`:''}
-      ${verba}
-    </div>`;
-  }).join('');
-  const u = usage ? `<div class="ia-empty" style="grid-column:1/-1">Tokens: entrada ${usage.input_tokens||'?'} · saída ${usage.output_tokens||'?'}</div>` : '';
-  iaShow(stamp+cards+u);
-}
-function iaNormUrl(u){ u=(u||'').trim(); if(u && !/^https?:\/\//i.test(u)) u='https://'+u; return u; }
-async function iaGenerate(){
-  const backend=iaBackendUrl(), pass=localStorage.getItem('ia_pass');
-  if(!backend||!pass){ document.getElementById('iaConfig').style.display='block'; return; }
-  const btn=document.getElementById('iaGen'); btn.classList.add('loading'); btn.disabled=true;
-  iaShow('<div class="ia-empty">Gerando insights com a IA… (pode levar alguns segundos)</div>');
-  try{
-    const res=await fetch(backend,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass,data:iaBuildData()})});
-    const txt=await res.text(); let j=null; try{ j=JSON.parse(txt); }catch{}
-    if(!j){ iaShow('<div class="ins-card err"><div class="ins-title">Resposta inválida do backend</div><div class="ins-diag">HTTP '+res.status+'. A URL do Worker pode estar errada ou o Worker não está publicado. Abra a URL no navegador: deve mostrar <code>{"error":"Use GET ou POST."}</code>.</div><div class="ins-struct">'+esc(txt.slice(0,200))+'</div></div>'); return; }
-    if(!res.ok || j.error){
-      const extra=[]; if(j.detail) extra.push(String(j.detail)); if(j.stop_reason) extra.push('stop_reason='+j.stop_reason); if(j.raw) extra.push('Resposta do modelo: '+String(j.raw));
-      iaShow('<div class="ins-card err"><div class="ins-title">Erro</div><div class="ins-diag">'+esc(j.error||('HTTP '+res.status))+'</div>'+(extra.length?('<div class="ins-struct" style="white-space:pre-wrap">'+esc(extra.join('\n').slice(0,1200))+'</div>'):'')+'</div>');
-    }
-    else {
-      iaRenderCards(j.insights||[], j.usage, j.at||Date.now(), j.from, j.to);
-    }
-  }catch(e){ iaShow('<div class="ins-card err"><div class="ins-title">Falha de rede</div><div class="ins-diag">'+esc(e.message)+' — a URL deve começar com https:// e terminar em .workers.dev, e o Worker precisa estar publicado (CORS).</div></div>'); }
-  finally{ btn.classList.remove('loading'); btn.disabled=false; }
-}
-async function iaLoadLatest(){
-  const backend=iaBackendUrl();
-  if(!backend){ iaShow('<div class="ia-empty">Configure o backend e clique em <b>Gerar insights</b>.</div>'); return; }
-  iaShow('<div class="ia-empty">Carregando insights…</div>');
-  try{
-    const res=await fetch(backend,{method:'GET'});
-    const j=await res.json().catch(()=>null);
-    if(j && Array.isArray(j.insights) && j.insights.length){ iaRenderCards(j.insights, j.usage, j.at, j.from, j.to); }
-    else { iaShow('<div class="ia-empty">Nenhum insight gerado ainda. Clique em <b>Gerar insights</b>.</div>'); }
-  }catch(e){ iaShow('<div class="ia-empty">Não foi possível carregar os insights agora. Clique em <b>Gerar insights</b>.</div>'); }
-}
-function renderIA(){ iaStatusText(); iaRenderWin(); iaLoadLatest(); }
 
 /* ---------------- date presets ---------------- */
 const PRESETS=[
@@ -832,13 +686,12 @@ function setPage(p){ STATE.page=p;
   document.getElementById('page-geral').classList.toggle('active',p==='geral');
   document.getElementById('page-meta').classList.toggle('active',p==='meta');
   document.getElementById('page-rel').classList.toggle('active',p==='rel');
-  document.getElementById('page-ia').classList.toggle('active',p==='ia');
-  document.getElementById('ptitle').textContent = p==='meta'?'Meta Ads':(p==='rel'?'Relatórios':(p==='ia'?'IA Insights':'Visão Geral'));
+  document.getElementById('ptitle').textContent = p==='meta'?'Meta Ads':(p==='rel'?'Insights de IA':'Visão Geral');
   document.getElementById('navToggle').checked=false;
   history.replaceState(null,'', '#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorios(); else if(STATE.page==='ia') renderIA(); else renderGeral(); }
+function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorios(); else renderGeral(); }
 
 /* Tema ESCURO é o padrão; só fica claro se o usuário tiver escolhido 'light'. */
 function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark'); }
@@ -868,19 +721,6 @@ document.getElementById('clearAdsetBtn').addEventListener('click',()=>{ STATE.mS
 document.getElementById('clearAdBtn').addEventListener('click',()=>{ STATE.mSelAd.clear(); renderMeta(); });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
 
-/* IA Insights config + geração */
-document.getElementById('iaCfgBtn').addEventListener('click',()=>{ const c=document.getElementById('iaConfig');
-  c.style.display = c.style.display==='none'?'block':'none';
-  document.getElementById('iaUrl').value=localStorage.getItem('ia_backend')||'';
-  document.getElementById('iaPass').value=localStorage.getItem('ia_pass')||''; });
-document.getElementById('iaSave').addEventListener('click',()=>{
-  const u=iaNormUrl(document.getElementById('iaUrl').value), p=document.getElementById('iaPass').value;
-  if(u) localStorage.setItem('ia_backend',u); else localStorage.removeItem('ia_backend');
-  if(p) localStorage.setItem('ia_pass',p); else localStorage.removeItem('ia_pass');
-  document.getElementById('iaCfgMsg').textContent='Salvo neste navegador ✓';
-  document.getElementById('iaConfig').style.display='none'; iaStatusText(); });
-document.getElementById('iaGen').addEventListener('click',iaGenerate);
-
 document.title=(B.client_sub?B.client_sub+' · ':'')+(B.client_name||'Dashboard');
 document.getElementById('logoMain').textContent=B.client_name||'—';
 document.getElementById('logoSub').textContent=B.client_sub||'';
@@ -893,10 +733,10 @@ document.getElementById('updated').innerHTML='Última atualização:<br>'+B.gene
 document.getElementById('buildFoot').textContent='build __BUILD_ID__';
 document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 
-syncDateInputs(); iaStatusText();
+syncDateInputs();
 document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta ON por padrão */
 syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
-setPage(location.hash==='#meta'?'meta':(location.hash==='#rel'?'rel':(location.hash==='#ia'?'ia':'geral')));
+setPage(location.hash==='#meta'?'meta':(location.hash==='#rel'?'rel':'geral'));
 
 /* auto-refresh com cache-bust ~30 min */
 setTimeout(()=>{ location.href=location.pathname+'?t='+Date.now()+location.hash; }, 30*60*1000);

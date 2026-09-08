@@ -21,8 +21,7 @@
     <div class="sec">Dashboards</div>
     <div class="nav-item active" data-page="geral"><span class="ic">◱</span> Visão Geral</div>
     <div class="nav-item" data-page="meta"><span class="ic">◨</span> Meta Ads</div>
-    <div class="nav-item" data-page="rel"><span class="ic">▤</span> Relatórios</div>
-    <div class="nav-item" data-page="ia"><span class="ic">✦</span> IA Insights</div>
+    <div class="nav-item" data-page="rel"><span class="ic">✦</span> Insights de IA</div>
     <div class="foot">Somente leitura · atualiza ~30 min<br><span id="buildFoot"></span></div>
   </aside>
 
@@ -153,7 +152,7 @@
         </div>
       </div>
 
-      <!-- ===================== PÁGINA: RELATÓRIOS ===================== -->
+      <!-- ===================== PÁGINA 3: INSIGHTS DE IA (relatórios) ===================== -->
       <div class="page" id="page-rel">
         <div class="rel-head">
           <div>
@@ -209,30 +208,6 @@
         <h2 class="sec-title">Briefing do Gestor</h2>
         <div class="rel-brief" id="relBrief"></div>
         <p class="note" id="relBriefStamp"></p>
-      </div>
-
-      <!-- ===================== PÁGINA 3: IA INSIGHTS ===================== -->
-      <div class="page" id="page-ia">
-        <h2 class="sec-title">IA Insights</h2>
-        <div class="card">
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
-            <button class="btn primary" id="iaGen"><span class="spin">✦</span> Gerar insights</button>
-            <div class="chips" id="iaWin" style="display:flex;gap:6px"></div>
-            <button class="btn" id="iaCfgBtn">⚙ Configurar</button>
-            <span class="hint" id="iaStatus" style="margin:0"></span>
-          </div>
-          <div class="ia-config" id="iaConfig" style="display:none">
-            <p class="hint" style="margin:6px 0">Os insights já ficam salvos no Worker (Cloudflare) e aparecem para <b>qualquer visitante</b>, em qualquer navegador, sem configurar nada. Para <b>gerar novos insights</b> é preciso a senha (a mesma do secret <code>INSIGHTS_PASSWORD</code>) — fica salva só neste navegador. Só preencha "Worker URL" se quiser apontar para outro backend; o padrão já vem embutido no build. Passo a passo em <b>SETUP-IA.md</b>.</p>
-            <div class="ia-fields">
-              <label>Worker URL (opcional)<input id="iaUrl" placeholder="https://nomecliente-ia-insights.xxx.workers.dev"></label>
-              <label>Senha<input id="iaPass" type="password" placeholder="senha do Worker"></label>
-              <button class="btn primary" id="iaSave">Salvar</button>
-            </div>
-            <span class="hint" id="iaCfgMsg" style="display:block; margin-top:6px"></span>
-          </div>
-          <p class="note">Análise feita por IA (Claude) do <b>funil</b> e das <b>estruturas ativas</b> — CPM, CTR, CR, VisCHK, ConvLP, ConvCHK, CAC, ROAS, Ticket. A janela acima (independente do filtro das outras abas) define o histórico usado para detectar <b>tendência/saturação</b> (compara a metade recente vs a anterior). Sinaliza gargalos e destaques; recomendações de verba consideram <b>ABO (conjunto)</b> e <b>CBO (campanha)</b>. Aplicação de verba: peça no chat que eu executo no Meta. Cada clique em "Gerar insights" = 1 chamada à IA, e o resultado substitui o anterior para todo mundo.</p>
-        </div>
-        <div id="iaCards" class="ia-cards"><div class="ia-empty">Carregando insights…</div></div>
       </div>
 
       <div class="foot">Atualizado automaticamente a cada ~30 min via GitHub Actions + cron‑job.org. Somente leitura das planilhas. <span id="buildFoot2"></span></div>
