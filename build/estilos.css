@@ -84,12 +84,13 @@
   .tax-toggle.on .toggle-label{color:var(--accent-blue); font-weight:600}
 
   /* Toggle de moeda (USD/BRL) */
-  .cur-toggle{display:inline-flex; align-items:center; gap:8px}
+  .cur-toggle{display:inline-flex; flex-direction:column; align-items:center; gap:4px}
   .cur-lbl{font-size:12.5px; color:var(--muted); white-space:nowrap}
   .cur-switch{display:inline-flex; border:1px solid var(--border); border-radius:999px; padding:2px; background:var(--surface)}
-  .cur-opt{border:none; background:transparent; color:var(--muted); font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:.15s}
+  .cur-opt{display:inline-flex; align-items:center; gap:6px; border:none; background:transparent; color:var(--muted); font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:.15s}
   .cur-opt.active{background:var(--accent-blue); color:#fff}
-  .cur-rate{font-size:11px; color:var(--muted); white-space:nowrap}
+  .cur-flag{width:16px; height:11.2px; flex:0 0 auto; border-radius:2px; box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+  .cur-rate{font-size:11px; color:var(--muted); white-space:nowrap; text-align:center}
 
   /* ---------- Page content ---------- */
   .page-content{padding:24px 24px 60px}

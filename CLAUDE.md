@@ -104,17 +104,21 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   derivadas (CPM/CTR) ficam zeradas/"--" (`header_index` não tem fallback posicional
   para `impr` quando o alias não é encontrado — ver `build/build.py`). Não é um bug,
   é a planilha real deste cliente.
-- **Coluna de receita**: `val` usa `Fat. líquido (BRL)` (alias `faturamento`, prioridade
-  sobre `valor`) — é a receita líquida em reais, já com taxas de gateway descontadas.
-  **Achado real neste cliente**: em pelo menos parte das vendas do produto principal
-  (Efeito Próximo Nível) essa coluna vem com **`#REF!`** (erro de fórmula na planilha
-  do cliente, não é algo que o build cause) — confirmado rodando o build real via
-  GitHub Actions contra a planilha (o build imprimia Faturamento = R$ 0,00 com 277
-  vendas). `build/build.py` agora cai para `Valor bruto (BRL)` (receita bruta, sem
-  descontar taxas de gateway) linha a linha sempre que o líquido vier vazio/zerado —
-  evita mostrar R$0 no lugar da receita, mas **ROAS/Ticket ficam levemente
-  superestimados** nas vendas afetadas (bruto > líquido) até o cliente corrigir a
-  fórmula `#REF!` na planilha dele.
+- **Coluna de receita**: `val` usa **`Fat. líquido (USD)`** (alias `faturamento liquido
+  (usd)`, prioridade sobre `valor`) — é a receita líquida **em dólar**, já com taxas de
+  gateway descontadas. Isso é obrigatório porque todo o resto do funil (Gasto do Meta
+  Ads e todo cálculo interno — CAC, ROAS, Ticket) é nativo em USD; só o `brl()` em
+  `build/app.js` converte pela cotação ao **formatar** para exibição (ver "Toggle de
+  moeda" acima). **Bug real corrigido neste cliente**: uma versão anterior deste build
+  usava `Fat. líquido (BRL)` (com fallback para `Valor bruto (BRL)`) — essa coluna vem
+  com **`#REF!`** em parte das vendas do produto principal (erro de fórmula na planilha
+  do cliente) e, pior, mesmo quando preenchida é um valor em **reais** sendo tratado
+  como se fosse USD por baixo — daí multiplicado de novo pela cotação ao exibir em BRL
+  (double-conversion, ~5x inflado) e mostrado com o símbolo errado ("US$") em modo USD.
+  Isso inflava Faturamento/Ticket/ROAS. A coluna `Fat. líquido (USD)` deste cliente não
+  apresenta o problema de `#REF!` (confirmado na planilha real), então não há mais
+  fallback para uma coluna bruta/BRL — se ela algum dia vier quebrada, revisar de novo
+  antes de reintroduzir qualquer fallback (tem que ser uma coluna também em USD).
 - **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
   `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`.
 - **Sem colunas UTM separadas** (não há `utm_campaign`/`utm_medium`/`utm_content`
@@ -167,8 +171,10 @@ ConvCHK (Vendas/Checkouts) · Faturamento · ROAS (Faturamento/Gasto) · Ticket 
   nem UTM. Só conta status pago (`Status` = Completo/Aprovado/...).
 
 ### Imposto Meta Ads
-Cliente não informou imposto — `TAX_FACTOR = 1.0` (toggle vira no-op). Se houver
-imposto sobre os custos do Meta, ajustar `TAX_FACTOR`/`TAX_LABEL` em `build/config.py`.
+`TAX_FACTOR = 1.13806` (+13,806%) — imposto padrão que a Meta cobra sobre a verba de
+anúncios no Brasil. Aplicado sobre o Gasto quando o toggle "Imposto Meta" está ligado
+(padrão) na topbar. Ajustar `TAX_FACTOR`/`TAX_LABEL` em `build/config.py` se esse
+cliente tiver uma alíquota diferente.
 
 ### Convenções de campanha
 `Campaign Name = utm_campaign`, `Ad Set Name = utm_medium`, `Ad Name = utm_content`,

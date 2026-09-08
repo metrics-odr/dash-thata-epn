@@ -32,7 +32,7 @@ GID_SALES = "1836439885"         # aba Compradores
 # Fator de imposto aplicado sobre o gasto do Meta Ads quando o toggle
 # "Imposto Meta" estiver ligado na dashboard. Use 1.0 se o cliente não tiver
 # imposto a considerar.
-TAX_FACTOR = 1.0   # ex.: 1.13806 (equivale a +13,806%) — cliente não informou imposto
+TAX_FACTOR = 1.13806   # +13,806% — imposto padrão do Meta Ads sobre a verba (BR)
 
 # Produto principal do funil (base de Vendas/CAC/ConvCHK/Ticket). Casamento
 # por PREFIXO, sem acento e em minúsculas, sobre o nome do produto que
@@ -51,7 +51,7 @@ COUNT_ALL_AS_PAID = False   # planilha tem coluna "Status" confiável (Completo/
 # ==========================================================================
 CLIENT_NAME = "Thata Junqueira"       # aparece no topo do menu lateral
 CLIENT_SUB = "Efeito Próximo Nível"   # subtítulo abaixo do nome
-TAX_LABEL = "Imposto Meta"            # TAX_FACTOR=1.0 (sem imposto informado) -> toggle não altera valores
+TAX_LABEL = "Imposto Meta"            # rótulo do toggle (aplica TAX_FACTOR acima quando ligado)
 MAIN_PRODUCT = "Efeito Próximo Nível" # nome de exibição do produto principal
 
 # ==========================================================================
