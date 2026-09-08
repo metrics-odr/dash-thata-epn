@@ -289,6 +289,10 @@ def process(meta_rows, sales_rows):
          # (BRL)" (que têm "valor" como substring e aparecem antes na planilha).
          "val": ["fat. liquido (brl)", "faturamento liquido", "faturamento",
                  "valor da venda", "valor", "value", "amount"],
+         # Fallback por linha quando o líquido vem vazio/quebrado (ex.: "#REF!" —
+         # erro de fórmula na planilha do cliente) — usa o valor bruto daquela
+         # venda em vez de contar R$0.
+         "val_bruto": ["valor bruto (brl)", "valor bruto"],
          "utm_content": ["utm content", "utm_content"],
          "utm_campaign": ["utm campaign", "utm_campaign"],
          "utm_medium": ["utm medium", "utm_medium"],
@@ -342,11 +346,14 @@ def process(meta_rows, sales_rows):
         else:
             camp = sale_camp
             adset = (det_medium if use_utm_detail else cell(row, sidx["utm_medium"])) or "(sem conjunto)"
+        val = to_float(cell(row, sidx["val"]))
+        if not val and sidx["val_bruto"] is not None:
+            val = to_float(cell(row, sidx["val_bruto"]))
         sales.append({
             "d": parse_date(cell(row, sidx["created"])),
             "camp": camp, "adset": adset, "ad": ad,
             "prod": prod or "—",
-            "val": round(to_float(cell(row, sidx["val"])), 2),
+            "val": round(val, 2),
             "main": 1 if main else 0,
             # meta=1 quando a venda casa com campanha+anúncio real do Meta (tráfego
             # pago). Vendas do produto principal sem esse match (orgânico/direto, ou
@@ -442,21 +449,6 @@ def main():
 
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
-    if os.environ.get("DEBUG_HEADERS"):
-        print("DEBUG meta header:", meta_rows[0] if meta_rows else None, file=sys.stderr)
-        print("DEBUG sales header:", sales_rows[0] if sales_rows else None, file=sys.stderr)
-        h = [norm(x) for x in (sales_rows[0] if sales_rows else [])]
-        i_liq = h.index(norm("Fat. líquido (BRL)")) if norm("Fat. líquido (BRL)") in h else None
-        i_bru = h.index(norm("Valor bruto (BRL)")) if norm("Valor bruto (BRL)") in h else None
-        i_prod = h.index(norm("Produto")) if norm("Produto") in h else None
-        i_status = h.index(norm("Status")) if norm("Status") in h else None
-        for r in sales_rows[1:6]:
-            print("DEBUG row:",
-                  "status=", cell(r, i_status) if i_status is not None else "?",
-                  "prod=", cell(r, i_prod) if i_prod is not None else "?",
-                  "liquido=", repr(cell(r, i_liq)) if i_liq is not None else "?",
-                  "bruto=", repr(cell(r, i_bru)) if i_bru is not None else "?",
-                  file=sys.stderr)
     data = process(meta_rows, sales_rows)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do

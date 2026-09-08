@@ -46,8 +46,6 @@ jobs:
 
       - name: Build dashboard (le as planilhas via CSV publico, somente leitura)
         run: python build/build.py --out dist/index.html
-        env:
-          DEBUG_HEADERS: "1"
 
       - name: Add .nojekyll
         run: touch dist/.nojekyll

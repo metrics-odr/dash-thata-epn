@@ -97,6 +97,15 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   é a planilha real deste cliente.
 - **Coluna de receita**: `val` usa `Fat. líquido (BRL)` (alias `faturamento`, prioridade
   sobre `valor`) — é a receita líquida em reais, já com taxas de gateway descontadas.
+  **Achado real neste cliente**: em pelo menos parte das vendas do produto principal
+  (Efeito Próximo Nível) essa coluna vem com **`#REF!`** (erro de fórmula na planilha
+  do cliente, não é algo que o build cause) — confirmado rodando o build real via
+  GitHub Actions contra a planilha (o build imprimia Faturamento = R$ 0,00 com 277
+  vendas). `build/build.py` agora cai para `Valor bruto (BRL)` (receita bruta, sem
+  descontar taxas de gateway) linha a linha sempre que o líquido vier vazio/zerado —
+  evita mostrar R$0 no lugar da receita, mas **ROAS/Ticket ficam levemente
+  superestimados** nas vendas afetadas (bruto > líquido) até o cliente corrigir a
+  fórmula `#REF!` na planilha dele.
 - **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
   `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`.
 - **Sem colunas UTM separadas** (não há `utm_campaign`/`utm_medium`/`utm_content`
