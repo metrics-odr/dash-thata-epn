@@ -188,6 +188,8 @@
   table.dt tbody tr.sel{background:var(--selected)}
   table.dt tfoot td{position:sticky; bottom:0; background:var(--tfoot); font-weight:700; border-top:2px solid var(--border); text-align:right}
   table.dt tfoot td.dim{text-align:left}
+  #gDaily th, #gDaily td, #tDaily th, #tDaily td{text-align:center}
+  #gDaily th.dim, #gDaily td.dim, #tDaily th.dim, #tDaily td.dim{text-align:center}
   .pair-chart{border-top:1px solid var(--border); padding:8px 10px 10px; height:190px; display:flex; flex-direction:column}
   .pair-chart .pc-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:0 4px 4px; flex:0 0 auto}
   .pair-chart canvas{flex:1 1 auto; min-height:0}
