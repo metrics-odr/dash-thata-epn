@@ -233,6 +233,40 @@
   .rc-green{color:var(--good); font-weight:700}
   .rc-cyan{color:var(--aqua); font-weight:700}
 
+  /* Saúde do funil (score 0-100 ancorado na meta de CPIC/CPL-A) */
+  .health-card{display:flex; gap:22px; align-items:flex-start; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; flex-wrap:wrap}
+  .health-gauge{flex:0 0 auto}
+  .health-ring{width:104px; height:104px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:background .3s}
+  .health-ring-inner{width:80px; height:80px; border-radius:50%; background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .health-score{font-size:26px; font-weight:800; line-height:1; color:var(--ink)}
+  .health-score-lbl{font-size:10px; color:var(--muted); margin-top:2px}
+  .health-body{flex:1 1 360px; min-width:280px}
+  .health-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px}
+  .health-title{font-size:15px; font-weight:800; margin:0}
+  .health-badge{font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; background:var(--bg); border:1px solid var(--border)}
+  .health-badge.rc-red{background:color-mix(in srgb,var(--red) 12%,transparent)}
+  .health-badge.rc-yellow{background:color-mix(in srgb,var(--yellow) 14%,transparent)}
+  .health-badge.rc-green{background:color-mix(in srgb,var(--good) 12%,transparent)}
+  .health-badge.rc-cyan{background:color-mix(in srgb,var(--aqua) 14%,transparent)}
+  .health-desc{font-size:12px; color:var(--muted)}
+  .health-goal{display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:8px 12px; margin-bottom:14px}
+  .health-goal label{font-size:12px; font-weight:600; color:var(--ink)}
+  .health-goal-input{display:flex; align-items:center; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:3px 8px}
+  .health-goal-input span{font-size:12px; color:var(--muted)}
+  .health-goal-input input{width:90px; border:0; background:transparent; color:var(--ink); font-size:13px; font-weight:700; outline:none}
+  .health-goal-hint{font-size:11px; color:var(--muted)}
+  .health-bars{display:grid; grid-template-columns:1fr 1fr; gap:10px 20px}
+  @media(max-width:640px){.health-bars{grid-template-columns:1fr}}
+  .health-bar-item{font-size:12px}
+  .health-bar-head{display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; color:var(--muted)}
+  .health-bar-head b{color:var(--ink); font-weight:700; white-space:nowrap}
+  .health-bar-note{color:var(--muted); font-weight:400}
+  .health-bar-track{height:6px; border-radius:999px; background:var(--border); overflow:hidden}
+  .health-bar-fill{height:100%; border-radius:999px; background:var(--muted)}
+  .health-bar-fill.hb-ok{background:var(--good)}
+  .health-bar-fill.hb-warn{background:var(--yellow)}
+  .health-bar-fill.hb-bad{background:var(--red)}
+
   .rel-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:4px}
   .rel-title{font-size:20px; font-weight:800; margin:0}
   .rel-title span{color:var(--accent-blue)}

@@ -168,23 +168,31 @@
           </div>
         </div>
 
-        <h2 class="sec-title">Visão geral</h2>
-        <div class="rel-ov">
-          <div class="rel-ov-block">
-            <div class="rel-ov-head">Visão Geral Total <span>todas as vendas</span></div>
-            <div class="rel-cards" id="relCardsTotal"></div>
+        <h2 class="sec-title">Saúde do funil</h2>
+        <div class="health-card">
+          <div class="health-gauge">
+            <div class="health-ring" id="healthRing">
+              <div class="health-ring-inner">
+                <div class="health-score" id="healthScore">--</div>
+                <div class="health-score-lbl">de 100</div>
+              </div>
+            </div>
           </div>
-          <div class="rel-ov-block">
-            <div class="rel-ov-head">Visão Geral Tráfego <span>apenas Meta Ads</span></div>
-            <div class="rel-cards" id="relCardsAds"></div>
+          <div class="health-body">
+            <div class="health-top">
+              <h3 class="health-title">Saúde do funil</h3>
+              <span class="health-badge" id="healthBadge">--</span>
+              <span class="health-desc" id="healthDesc">ancorado na meta de CPIC (CPL‑A)</span>
+            </div>
+            <div class="health-goal">
+              <label for="healthGoalInput">Meta de CPIC qualificado (CPL‑A)</label>
+              <div class="health-goal-input"><span id="healthGoalCur">R$</span><input type="number" id="healthGoalInput" min="0" step="0.01" inputmode="decimal"></div>
+              <span class="health-goal-hint">define o teto de CPC/CPV abaixo</span>
+            </div>
+            <div class="health-bars" id="healthBars"></div>
           </div>
         </div>
-
-        <h2 class="sec-title">Funil dia a dia</h2>
-        <div class="card" style="padding:0">
-          <div class="tbl-wrap tbl-normal"><table class="dt rel-dt" id="relDaily"></table></div>
-          <p class="note" style="padding:10px 15px">Total = todas as vendas · Ads = só Meta Ads (separados pela barra vertical). <b>CAC</b> e <b>ROAS</b> com <b>código de cor</b> conforme a meta. Último dia no topo.</p>
-        </div>
+        <p class="note" id="healthNote">Sem coluna de Impressões nesta conta (CPM/CTR ficam zerados) — a saúde do funil usa <b>CPIC</b> (custo por checkout iniciado, equivalente ao CPL qualificado deste funil), <b>CPC</b>, <b>CPV</b> (custo por Page View) e <b>VisCHK</b> (Checkouts/Page Views). Tetos de CPC/CPV calculados a partir da meta de CPIC pela proporção histórica da conta; mínimo de VisCHK estipulado pelo histórico da conta.</p>
 
         <h2 class="sec-title">Visão por campanha</h2>
         <div class="card" style="padding:0">
@@ -204,6 +212,18 @@
           </div>
         </div>
         <p class="note">Ranqueados por ROAS (e CAC como desempate) entre anúncios com gasto relevante no período. Link abre o criativo no Instagram.</p>
+
+        <h2 class="sec-title">Visão geral</h2>
+        <div class="rel-ov">
+          <div class="rel-ov-block">
+            <div class="rel-ov-head">Visão Geral Total <span>todas as vendas</span></div>
+            <div class="rel-cards" id="relCardsTotal"></div>
+          </div>
+          <div class="rel-ov-block">
+            <div class="rel-ov-head">Visão Geral Tráfego <span>apenas Meta Ads</span></div>
+            <div class="rel-cards" id="relCardsAds"></div>
+          </div>
+        </div>
 
         <h2 class="sec-title">Briefing do Gestor</h2>
         <div class="rel-brief" id="relBrief"></div>
