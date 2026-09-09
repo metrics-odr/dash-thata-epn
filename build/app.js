@@ -499,14 +499,19 @@ const REL_BAND_LO=(B.report_band_low!=null?B.report_band_low:0.7);
 const REL_BAND_HI=(B.report_band_high!=null?B.report_band_high:1.3);
 const AD_LINKS=DATA.ad_links||{};
 
-/* ---- saúde do funil: histórico da conta (todo o período, sem filtro) ---- */
+/* ---- saúde do funil: histórico da conta (todo o período, sem filtro) ----
+   Funil VSL: CAC é a meta editável (âncora); CTR/CR/VisCHK/ConvCHK são pisos
+   de conversão de cada etapa, estipulados a partir do histórico da conta. */
 const HIST=derive(totals(SALES,META));
-const HEALTH_GOAL_KEY='dm_cpic_goal';
-STATE.cpicGoal=(()=>{ const v=parseFloat(localStorage.getItem(HEALTH_GOAL_KEY)); return (isFinite(v)&&v>0)?v:(HIST.cpic||null); })();
-/* proporção histórica: quanto do CPIC vem de CPC/CPV — usada p/ escalar os tetos junto com a meta */
-const HEALTH_RATIO_CPC=(HIST.cpic&&HIST.cpc)?HIST.cpc/HIST.cpic:null;
-const HEALTH_RATIO_CPV=(HIST.cpic&&HIST.cpv)?HIST.cpv/HIST.cpic:null;
-const HEALTH_VISCHK_MIN=HIST.vischk!=null?HIST.vischk*0.85:null; /* piso = 85% do VisCHK histórico da conta */
+const HEALTH_GOAL_KEY='dm_health_cac_goal';
+STATE.cacGoal=(()=>{ const v=parseFloat(localStorage.getItem(HEALTH_GOAL_KEY));
+  if(isFinite(v)&&v>0) return v;
+  return (CAC_TARGET&&CAC_TARGET>0)?CAC_TARGET:(HIST.cac||null); })();
+const HEALTH_TOL=0.85; /* piso = 85% da taxa histórica da conta */
+const HEALTH_CTR_MIN=HIST.ctr!=null?HIST.ctr*HEALTH_TOL:null;
+const HEALTH_CR_MIN=HIST.cr!=null?HIST.cr*HEALTH_TOL:null;
+const HEALTH_VISCHK_MIN=HIST.vischk!=null?HIST.vischk*HEALTH_TOL:null;
+const HEALTH_CONVCHK_MIN=HIST.convchk!=null?HIST.convchk*HEALTH_TOL:null;
 /* meta é digitada/exibida na moeda selecionada (USD/BRL), mas armazenada e usada
    nos cálculos sempre em USD — mesma convenção do resto do dashboard (ver brl()) */
 const healthCurSym=()=>STATE.currency==='usd'?'US$':'R$';
@@ -523,17 +528,16 @@ function healthBar(label,valTxt,perf,note){
     <div class="health-bar-track"><div class="health-bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
 }
 function renderHealthCard(d){
-  const goal=STATE.cpicGoal;
-  const tetoCpc=(goal&&HEALTH_RATIO_CPC)?goal*HEALTH_RATIO_CPC:null;
-  const tetoCpv=(goal&&HEALTH_RATIO_CPV)?goal*HEALTH_RATIO_CPV:null;
-  const minVischk=HEALTH_VISCHK_MIN;
+  const goal=STATE.cacGoal;
+  const minCtr=HEALTH_CTR_MIN, minCr=HEALTH_CR_MIN, minVischk=HEALTH_VISCHK_MIN, minConvchk=HEALTH_CONVCHK_MIN;
 
-  const pCpic=healthPerf(d.cpic,goal,false);
-  const pCpc=healthPerf(d.cpc,tetoCpc,false);
-  const pCpv=healthPerf(d.cpv,tetoCpv,false);
+  const pCac=healthPerf(d.cac,goal,false);
+  const pCtr=healthPerf(d.ctr,minCtr,true);
+  const pCr=healthPerf(d.cr,minCr,true);
   const pVischk=healthPerf(d.vischk,minVischk,true);
+  const pConvchk=healthPerf(d.convchk,minConvchk,true);
 
-  const comps=[[pCpic,0.5],[pCpc,0.2],[pCpv,0.15],[pVischk,0.15]].filter(c=>c[0]!=null);
+  const comps=[[pCac,0.4],[pCtr,0.15],[pCr,0.15],[pVischk,0.15],[pConvchk,0.15]].filter(c=>c[0]!=null);
   const wSum=comps.reduce((s,c)=>s+c[1],0);
   const score=wSum? Math.max(0,Math.min(100,Math.round(comps.reduce((s,c)=>s+Math.min(c[0],1.3)*c[1],0)/wSum*100))) : null;
 
@@ -549,17 +553,18 @@ function renderHealthCard(d){
   const badgeEl=document.getElementById('healthBadge');
   badgeEl.textContent = score==null?'--':`${band.lbl} · ${score}/100`;
   badgeEl.className = 'health-badge '+band.cls;
-  document.getElementById('healthDesc').textContent = goal ? 'ancorado na meta de CPIC (CPL‑A)' : 'defina a meta de CPIC (CPL‑A) abaixo p/ calcular a nota';
+  document.getElementById('healthDesc').textContent = goal ? 'ancorado na meta de CAC' : 'defina a meta de CAC abaixo p/ calcular a nota';
 
   const goalInput=document.getElementById('healthGoalInput');
   document.getElementById('healthGoalCur').textContent = healthCurSym();
   if(document.activeElement!==goalInput) goalInput.value = goal!=null? healthToDisplay(goal).toFixed(2) : '';
 
   document.getElementById('healthBars').innerHTML = [
-    healthBar('CPIC qualif. · meta '+(goal!=null?brl(goal):'—'), brl(d.cpic), pCpic),
-    healthBar('CPC · teto '+(tetoCpc!=null?brl(tetoCpc):'—'), brl(d.cpc), pCpc),
-    healthBar('CPV · teto '+(tetoCpv!=null?brl(tetoCpv):'—'), brl(d.cpv), pCpv),
+    healthBar('CAC · meta '+(goal!=null?brl(goal):'—'), brl(d.cac), pCac),
+    healthBar('CTR · mín '+(minCtr!=null?pct(minCtr):'—'), pct(d.ctr), pCtr),
+    healthBar('CR · mín '+(minCr!=null?pct(minCr):'—'), pct(d.cr), pCr),
     healthBar('VisCHK · mín '+(minVischk!=null?pct(minVischk):'—'), pct(d.vischk), pVischk),
+    healthBar('ConvCHK · mín '+(minConvchk!=null?pct(minConvchk):'—'), pct(d.convchk), pConvchk),
   ].join('');
 }
 if(!window.__healthGoalWired){
@@ -567,8 +572,8 @@ if(!window.__healthGoalWired){
   document.addEventListener('input',e=>{
     if(e.target&&e.target.id==='healthGoalInput'){
       const v=parseFloat(e.target.value);
-      STATE.cpicGoal=(isFinite(v)&&v>0)?healthFromDisplay(v):null;
-      if(STATE.cpicGoal!=null) localStorage.setItem(HEALTH_GOAL_KEY,String(STATE.cpicGoal));
+      STATE.cacGoal=(isFinite(v)&&v>0)?healthFromDisplay(v):null;
+      if(STATE.cacGoal!=null) localStorage.setItem(HEALTH_GOAL_KEY,String(STATE.cacGoal));
       else localStorage.removeItem(HEALTH_GOAL_KEY);
       if(STATE.page==='rel'){ const fM=metaActive(), fSall=salesActive();
         renderHealthCard(derive(totals(fSall,fM))); }
