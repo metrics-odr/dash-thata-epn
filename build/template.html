@@ -168,23 +168,31 @@
           </div>
         </div>
 
-        <h2 class="sec-title">Visão geral</h2>
-        <div class="rel-ov">
-          <div class="rel-ov-block">
-            <div class="rel-ov-head">Visão Geral Total <span>todas as vendas</span></div>
-            <div class="rel-cards" id="relCardsTotal"></div>
+        <h2 class="sec-title">Saúde do funil</h2>
+        <div class="health-card">
+          <div class="health-gauge">
+            <div class="health-ring" id="healthRing">
+              <div class="health-ring-inner">
+                <div class="health-score" id="healthScore">--</div>
+                <div class="health-score-lbl">de 100</div>
+              </div>
+            </div>
           </div>
-          <div class="rel-ov-block">
-            <div class="rel-ov-head">Visão Geral Tráfego <span>apenas Meta Ads</span></div>
-            <div class="rel-cards" id="relCardsAds"></div>
+          <div class="health-body">
+            <div class="health-top">
+              <h3 class="health-title">Saúde do funil</h3>
+              <span class="health-badge" id="healthBadge">--</span>
+              <span class="health-desc" id="healthDesc">ancorado na meta de CAC</span>
+            </div>
+            <div class="health-goal">
+              <label for="healthGoalInput">Meta de CAC</label>
+              <div class="health-goal-input"><span id="healthGoalCur">R$</span><input type="number" id="healthGoalInput" min="0" step="0.01" inputmode="decimal"></div>
+              <span class="health-goal-hint">as demais metas usam o histórico da conta</span>
+            </div>
+            <div class="health-bars" id="healthBars"></div>
           </div>
         </div>
-
-        <h2 class="sec-title">Funil dia a dia</h2>
-        <div class="card" style="padding:0">
-          <div class="tbl-wrap tbl-normal"><table class="dt rel-dt" id="relDaily"></table></div>
-          <p class="note" style="padding:10px 15px">Total = todas as vendas · Ads = só Meta Ads (separados pela barra vertical). <b>CAC</b> e <b>ROAS</b> com <b>código de cor</b> conforme a meta. Último dia no topo.</p>
-        </div>
+        <p class="note" id="healthNote">Funil VSL: a saúde combina o <b>CAC</b> (meta editável ao lado) com os pisos de conversão de cada etapa — <b>CTR</b>, <b>CR</b> (Page Views/Cliques), <b>VisCHK</b> (Checkouts/Page Views) e <b>ConvCHK</b> (Vendas/Checkouts) — estipulados a partir do histórico da conta (85% da taxa histórica). Esta conta não tem coluna de Impressões na aba Meta Ads, então o CTR fica "--"; os demais pisos funcionam normalmente.</p>
 
         <h2 class="sec-title">Visão por campanha</h2>
         <div class="card" style="padding:0">
@@ -204,6 +212,18 @@
           </div>
         </div>
         <p class="note">Ranqueados por ROAS (e CAC como desempate) entre anúncios com gasto relevante no período. Link abre o criativo no Instagram.</p>
+
+        <h2 class="sec-title">Visão geral</h2>
+        <div class="rel-ov">
+          <div class="rel-ov-block">
+            <div class="rel-ov-head">Visão Geral Total <span>todas as vendas</span></div>
+            <div class="rel-cards" id="relCardsTotal"></div>
+          </div>
+          <div class="rel-ov-block">
+            <div class="rel-ov-head">Visão Geral Tráfego <span>apenas Meta Ads</span></div>
+            <div class="rel-cards" id="relCardsAds"></div>
+          </div>
+        </div>
 
         <h2 class="sec-title">Briefing do Gestor</h2>
         <div class="rel-brief" id="relBrief"></div>
