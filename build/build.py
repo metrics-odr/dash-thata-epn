@@ -238,6 +238,12 @@ def process(meta_rows, sales_rows):
          "clicks": ["link clicks", "clicks", "cliques"],
          "pv": ["landing page views", "page views", "pageview", "landing"],
          "ck": ["checkouts initiated", "checkouts", "initiate checkout", "checkout"],
+         # Video views usados só nas taxas HR/BR/ER da tabela de Anúncios
+         # (build/app.js) — opcionais, sem fallback posicional, mesmo motivo
+         # do "impr" acima (planilhas sem essas colunas ficam com "--").
+         "vv3": ["3-second video views", "3 second video views"],
+         "vv50": ["video watches at 50%", "video watches 50%"],
+         "vv95": ["video watches at 95%", "video watches 95%"],
          # Link do criativo no Instagram (coluna acrescentada pelo cliente na aba
          # Meta Ads). Usada na aba Relatórios (Top/Piores anúncios) para linkar o
          # anúncio. Aliases cobrem variações do cabeçalho.
@@ -304,6 +310,9 @@ def process(meta_rows, sales_rows):
             "cl": to_float(cell(row, midx["clicks"])),
             "pv": to_float(cell(row, midx["pv"])),
             "ck": to_float(cell(row, midx["ck"])),
+            "vv3": to_float(cell(row, midx["vv3"])),
+            "vv50": to_float(cell(row, midx["vv50"])),
+            "vv95": to_float(cell(row, midx["vv95"])),
         })
 
     # ---------------- Aba COMPRADORES ----------------

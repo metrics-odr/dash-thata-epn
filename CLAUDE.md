@@ -87,7 +87,7 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
 
 | Aba | gid | Colunas reais |
 |-----|-----|----------------|
-| **Meta Ads** | `1195145852` | Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent · Link Clicks · Landing Page Views · Checkouts Initiated · 3-Second Video Views · Video Watches at 50% · Ad ID · Ad Status · Creative Instagram Permalink |
+| **Meta Ads** | `1195145852` | Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent · Link Clicks · Landing Page Views · Checkouts Initiated · 3-Second Video Views · Video Watches at 50% · Video Watches at 95% · Ad ID · Ad Status · Creative Instagram Permalink |
 | **Compradores** | `1836439885` | Data · Hora · Status · Produto · Tipo · Comprador(a) · E-mail · Telefone · País · Moeda compra · Valor compra (orig.) · Valor bruto (BRL) · Fat. líquido (USD) · **Fat. líquido (BRL)** · Método pagto · Parcelas · Origem · Origem UTM (bruto) · **Detalhe UTM** |
 
 **Pontos de atenção específicos deste cliente:**
@@ -133,6 +133,13 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   esse split pode quebrar — revalidar comparando `Detalhe UTM` com a aba Meta Ads.
 - **Identificador do anúncio**: `Ad Name` vem do 4º segmento (`utm_content`), não do
   3º (`utm_term`, que carrega o posicionamento — `Instagram_Feed` no exemplo acima).
+- **HR/BR/ER (retenção de vídeo)**: colunas `3-Second Video Views` / `Video Watches
+  at 50%` / `Video Watches at 95%` da aba Meta Ads (aliases `vv3`/`vv50`/`vv95` em
+  `build/build.py`, opcionais/sem fallback posicional — mesmo tratamento do `impr`).
+  `build/app.js` calcula HR = 3s / Impressões, BR = 50% / Impressões, ER = 95% /
+  Impressões (`derive()`) e exibe as 3 colunas **só na tabela de Anúncios** (entre
+  CPM e CTR — `AD_HCOLS`); Campanhas, Conjuntos e a tabela Diária continuam só com
+  `METRIC_COLS` (sem essas 3 colunas).
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
