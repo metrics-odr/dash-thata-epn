@@ -100,12 +100,15 @@ const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
    vendasM = compras do produto principal atribuídas ao Meta Ads (base das conversões)
    fat     = faturamento (todos os produtos do escopo)
    Obs.: na aba Meta o conjunto de vendas já é filtrado a meta==1, então vendas==vendasM. */
-function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vendas:0,vendasM:0,fat:0};}
+function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0};}
 function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat+=r.val; }
 function derive(a){
   const g=a.sp*taxf();
   return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat,
     cpm:a.im?g/a.im*1000:null, ctr:a.im?a.cl/a.im:null, cpc:a.cl?g/a.cl:null,
+    /* HR/BR/ER = taxas de retenção do vídeo (3s / 50% / 95%) sobre Impressões —
+       exibidas só na tabela de Anúncios (ver AD_HCOLS abaixo). */
+    hr:a.im?a.vv3/a.im:null, br:a.im?a.vv50/a.im:null, er:a.im?a.vv95/a.im:null,
     cpv:a.pv?g/a.pv:null, cr:a.cl?a.pv/a.cl:null,               /* CR = Page Views / Cliques */
     cpic:a.ck?g/a.ck:null, vischk:a.pv?a.ck/a.pv:null,
     convlp:a.pv?a.vendasM/a.pv:null,                            /* Vendas(Meta) / Page Views */
@@ -114,13 +117,13 @@ function derive(a){
 }
 function buildAgg(fS,fM,dim){
   const m={}; const get=k=>m[k]||(m[k]=newBucket());
-  fM.forEach(r=>{const a=get(r[dim]); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv; a.ck+=r.ck;});
+  fM.forEach(r=>{const a=get(r[dim]); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv; a.ck+=r.ck; a.vv3+=r.vv3; a.vv50+=r.vv50; a.vv95+=r.vv95;});
   fS.forEach(r=>{const a=get(r[dim]); addSales(a,r);});
   return m;
 }
 function totals(fS,fM){
   const a=newBucket();
-  fM.forEach(r=>{a.sp+=r.sp;a.im+=r.im;a.cl+=r.cl;a.pv+=r.pv;a.ck+=r.ck;});
+  fM.forEach(r=>{a.sp+=r.sp;a.im+=r.im;a.cl+=r.cl;a.pv+=r.pv;a.ck+=r.ck;a.vv3+=r.vv3;a.vv50+=r.vv50;a.vv95+=r.vv95;});
   fS.forEach(r=>addSales(a,r));
   return a;
 }
@@ -325,8 +328,13 @@ const METRIC_COLS=[
 ];
 const DAILY_COLS=[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:64}].concat(METRIC_COLS);
 const HCOLS=[{key:'dim',label:'',type:'dim',big:true}].concat(METRIC_COLS);
+/* Só a tabela de Anúncios ganha HR/BR/ER (retenção de vídeo), entre CPM e CTR —
+   Campanhas/Conjuntos/Diária seguem só com METRIC_COLS. */
+const AD_HCOLS=(()=>{ const cols=HCOLS.slice(); const i=cols.findIndex(c=>c.key==='ctr');
+  cols.splice(i,0,{key:'hr',label:'HR',type:'pct'},{key:'br',label:'BR',type:'pct'},{key:'er',label:'ER',type:'pct'});
+  return cols; })();
 function metricCells(x,d){
-  return {gasto:d.gasto, cpm:d.cpm, ctr:d.ctr, cr:d.cr, vischk:d.vischk, convchk:d.convchk,
+  return {gasto:d.gasto, cpm:d.cpm, hr:d.hr, br:d.br, er:d.er, ctr:d.ctr, cr:d.cr, vischk:d.vischk, convchk:d.convchk,
     vendas:x.vendas, cac:d.cac, fat:x.fat, ticket:d.ticket, roas:d.roas};
 }
 function dailyCells(x,d,isTotal){
@@ -471,7 +479,7 @@ function renderMeta(){
     statusMap:CAMP_ACTIVE, selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fS,Sa.fM,'adset')), total:totRowOf(totals(Sa.fS,Sa.fM)),
     statusMap:ADSET_ACTIVE, selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAd', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fS,Sd.fM,'ad')), total:totRowOf(totals(Sd.fS,Sd.fM)),
+  renderTable({id:'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fS,Sd.fM,'ad')), total:totRowOf(totals(Sd.fS,Sd.fM)),
     statusMap:AD_ACTIVE, selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
