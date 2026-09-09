@@ -155,6 +155,15 @@ def is_active_status(status: str) -> bool:
     return norm(status) in ("active", "ativo", "ativa")
 
 
+def _flatten_active_by_name(status_by_camp_name):
+    """{(campanha, nome): (day, status)} -> {nome: ativo} agregando por nome
+    (OR entre campanhas que colidem no mesmo nome de conjunto/anúncio)."""
+    out = {}
+    for (_camp, name), (_day, status) in status_by_camp_name.items():
+        out[name] = out.get(name, False) or is_active_status(status)
+    return out
+
+
 def is_main_product(prod: str) -> bool:
     return norm(prod).startswith(MAIN_PRODUCT_PREFIX)
 
@@ -266,14 +275,19 @@ def process(meta_rows, sales_rows):
     meta = []
     # Status (ativo/pausado) mais recente de cada campanha/conjunto/anúncio —
     # a planilha repete o status em toda linha diária, então guarda-se o de
-    # maior data por nome.
+    # maior data por chave. Conjunto/anúncio são rastreados por (campanha, nome)
+    # — não só pelo nome — porque nomes de anúncio (e, potencialmente, de
+    # conjunto) se repetem entre campanhas diferentes (ex. "AD03" existindo em
+    # duas campanhas distintas); rastrear só por nome faz o status de um
+    # anúncio pausado numa campanha vazar e sobrescrever o de um anúncio ativo
+    # com o mesmo nome em outra campanha.
     camp_status, adset_status, ad_status = {}, {}, {}
-    def _track_status(store, name, day, status):
+    def _track_status(store, key, day, status):
         if not status:
             return
-        prev = store.get(name)
+        prev = store.get(key)
         if prev is None or (day or "") >= (prev[0] or ""):
-            store[name] = (day, status)
+            store[key] = (day, status)
     # (campanha, anúncio) normalizados -> (campanha, conjunto) reais do Meta.
     # A chave inclui a CAMPANHA porque o mesmo nome de anúncio (ex. "AD01") se
     # repete em campanhas diferentes; casar só pelo nome do anúncio atribuiria a
@@ -300,8 +314,8 @@ def process(meta_rows, sales_rows):
             ad_links[ad] = link
         day = parse_date(cell(row, midx["day"]))
         _track_status(camp_status, camp, day, cell(row, midx["campaign_status"]))
-        _track_status(adset_status, adset, day, cell(row, midx["adset_status"]))
-        _track_status(ad_status, ad, day, cell(row, midx["ad_status"]))
+        _track_status(adset_status, (norm(camp), adset), day, cell(row, midx["adset_status"]))
+        _track_status(ad_status, (norm(camp), ad), day, cell(row, midx["ad_status"]))
         meta.append({
             "d": day,
             "camp": camp, "adset": adset, "ad": ad,
@@ -467,9 +481,16 @@ def process(meta_rows, sales_rows):
         # Status ATIVO/PAUSADO (mais recente) de cada campanha/conjunto/anúncio,
         # usado só p/ o indicativo visual nas tabelas de otimização (não tem
         # nenhum efeito em cálculo/filtro). Só entram nomes com status conhecido.
+        # adset_status/ad_status são rastreados por (campanha, nome) — ver
+        # _track_status acima — porque o mesmo nome pode existir em campanhas
+        # diferentes como anúncios/conjuntos DISTINTOS. As tabelas de Conjuntos/
+        # Anúncios agregam por nome (mesma lógica que já soma o gasto entre
+        # campanhas quando o nome colide), então aqui achatamos para o nome
+        # como chave, marcando ATIVO se QUALQUER anúncio/conjunto real com
+        # aquele nome estiver ativo — consistente com a agregação de gasto.
         "camp_active": {k: is_active_status(v[1]) for k, v in camp_status.items()},
-        "adset_active": {k: is_active_status(v[1]) for k, v in adset_status.items()},
-        "ad_active": {k: is_active_status(v[1]) for k, v in ad_status.items()},
+        "adset_active": _flatten_active_by_name(adset_status),
+        "ad_active": _flatten_active_by_name(ad_status),
         # Briefings do Gestor por período (gerados por IA 1x/dia via Routine e
         # salvos em build/relatorios.json). Preenchido em process()/main via
         # load_briefings(); fica {} se o arquivo não existir.
