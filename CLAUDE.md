@@ -241,7 +241,8 @@ ia-worker/wrangler.toml # nome do Worker (preencher por cliente, placeholder nom
 build/relatorios.json  # briefings do Gestor por período (aba Relatórios) — VERSIONADO
 build/relatorios_metrics.json # números por período (gerado pelo Actions, lido pela Routine) — VERSIONADO
 build/gerar_relatorios.py # calcula as métricas por período (rodado pelo Actions, não pela Routine)
-build/GUIA-RELATORIOS.md  # passo a passo da Routine que regenera os briefings
+build/GUIA-RELATORIOS.md  # passo a passo da Routine que regenera os briefings + particularidades deste funil
+build/METODO-ODR-ANALISE.md # ⭐ método de raciocínio (Método ODR) p/ redigir os briefings — genérico, não editar por cliente
 dist/index.html        # saída gerada (gitignored; o Actions reconstrói)
 GUIA-REPLICACAO.md     # engine explicada + solução dos problemas de publicação
 config.js               # metadados de publicação (GitHub) — copie de config.example.js

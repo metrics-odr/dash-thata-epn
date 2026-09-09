@@ -12,6 +12,14 @@
 > Por isso a Routine também migra o texto: o que estava em "hoje" (analisado
 > ontem à noite, já com o dia completo) vira o novo "ontem"; e escreve um
 > "hoje" novo do zero para o dia que acabou de fechar. Ver passo 4.
+>
+> **Antes de redigir, leia `build/METODO-ODR-ANALISE.md`.** Ele traz o
+> método de raciocínio (Método ODR): como identificar o funil, mapear
+> dependências entre métricas, achar causa raiz, distinguir sintoma/
+> hipótese/evidência e priorizar ações — é genérico e vale para qualquer
+> funil. Este guia (`GUIA-RELATORIOS.md`) traz o passo a passo operacional
+> da Routine e as particularidades **deste** funil (VSL/tráfego direto):
+> métricas específicas, tags de ação e formato do JSON.
 
 ## O que a Routine faz (passo a passo)
 
