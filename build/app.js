@@ -4,11 +4,14 @@ const META = DATA.meta, SALES = DATA.sales, B = DATA.build;
 const TAX = B.tax_factor || 1;
 const MAIN_PRODUCT = B.main_product || 'Produto principal';
 const MAIN_PREFIX = B.main_product_prefix || '';
-/* status ATIVO/PAUSADO (mais recente) por campanha/conjunto/anúncio — só p/ o
-   indicativo visual nas tabelas de otimização (Meta Ads), não afeta cálculos. */
-const CAMP_ACTIVE = DATA.camp_active || {};
-const ADSET_ACTIVE = DATA.adset_active || {};
-const AD_ACTIVE = DATA.ad_active || {};
+/* status ATIVO/PAUSADO por campanha/conjunto/anúncio — só p/ o indicativo
+   visual nas tabelas de otimização (Meta Ads); não afeta cálculo/filtro
+   nenhum. Resolvido em latestStatusByDim() (mais abaixo): usa SEMPRE a linha
+   mais recente disponível em cada meta[] (ignora o filtro de DATA da
+   topbar de propósito) e é escopado pela mesma seleção de campanha/conjunto
+   (drill-down) das tabelas — nunca mistura linhas de campanhas diferentes,
+   mesmo quando duas campanhas reaproveitam o mesmo nome de anúncio/conjunto
+   (ex. "AD03" existindo em campanhas distintas como anúncios DISTINTOS). */
 
 /* ---------------- format ---------------- */
 const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
@@ -433,6 +436,37 @@ function metaScope(ex){ let fM=metaActive(), fS=salesActive().filter(s=>s.meta);
   if(ex!=='A'&&STATE.mSelA.size){ fM=fM.filter(r=>STATE.mSelA.has(r.adset)); fS=fS.filter(r=>STATE.mSelA.has(r.adset)); }
   if(ex!=='D'&&STATE.mSelAd.size){ fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); fS=fS.filter(r=>STATE.mSelAd.has(r.ad)); }
   return {fM,fS}; }
+/* Igual a metaScope() acima, mas de propósito SEM o filtro de DATA da topbar
+   (usa META inteiro) — o indicativo de ativo/pausado tem que refletir a linha
+   mais recente disponível na planilha, não só as do período selecionado no
+   filtro de data (esse continua valendo pra tudo o mais: gasto, vendas etc.).
+   Mantém o mesmo escopo de campanha/conjunto/anúncio (drill-down) das tabelas. */
+function metaScopeAllDates(ex){
+  let fM=META;
+  if(ex!=='C'&&STATE.mSelC.size){ fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
+  if(ex!=='A'&&STATE.mSelA.size){ fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
+  if(ex!=='D'&&STATE.mSelAd.size){ fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
+  return fM;
+}
+/* {nome: ativo} pra uma dimensão (camp/adset/ad), a partir da linha de MAIOR
+   data disponível (dentro do escopo já filtrado por campanha/conjunto/anúncio
+   selecionados — nunca mistura linhas de campanhas diferentes reaproveitando
+   o mesmo nome). statusField é o campo cru da linha ('cs'/'as'/'ds' — ver
+   build/build.py); linhas com esse campo null (sem status naquela linha) são
+   ignoradas. */
+function latestStatusByDim(fM, dim, statusField){
+  const latest={};
+  fM.forEach(r=>{
+    const st=r[statusField];
+    if(st==null) return;
+    const k=r[dim];
+    const prev=latest[k];
+    if(!prev || (r.d||'')>=(prev.d||'')) latest[k]={d:r.d, v:st};
+  });
+  const out={};
+  Object.keys(latest).forEach(k=>out[k]=latest[k].v);
+  return out;
+}
 /* Cada dimensão (campanha/conjunto/anúncio) tem seu próprio conjunto de seleção,
    combinados em AND por metaScope. Um clique aqui só mexe no conjunto da própria
    dimensão — nunca limpa a seleção das outras tabelas (ver botões ✕ Filtro,
@@ -480,11 +514,11 @@ function renderMeta(){
   function totRowOf(tt){const dv=derive(tt);return Object.assign({dim:null}, metricCells(tt,dv));}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
   renderTable({id:'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fS,Sc.fM,'camp'),'tCamp'), total:totRowOf(totals(Sc.fS,Sc.fM)),
-    statusMap:CAMP_ACTIVE, selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:latestStatusByDim(metaScopeAllDates('C'),'camp','cs'), selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fS,Sa.fM,'adset'),'tAdset'), total:totRowOf(totals(Sa.fS,Sa.fM)),
-    statusMap:ADSET_ACTIVE, selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:latestStatusByDim(metaScopeAllDates('A'),'adset','as'), selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fS,Sd.fM,'ad'),'tAd'), total:totRowOf(totals(Sd.fS,Sd.fM)),
-    statusMap:AD_ACTIVE, selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:latestStatusByDim(metaScopeAllDates('D'),'ad','ds'), selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra

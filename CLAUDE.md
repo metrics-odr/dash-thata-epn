@@ -140,6 +140,26 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   Impressões (`derive()`) e exibe as 3 colunas **só na tabela de Anúncios** (entre
   CPM e CTR — `AD_HCOLS`); Campanhas, Conjuntos e a tabela Diária continuam só com
   `METRIC_COLS` (sem essas 3 colunas).
+- **Indicativo ATIVO/PAUSADO (bolinha antes do nome nas tabelas de Campanhas/
+  Conjuntos/Anúncios da aba Meta Ads)**: `build/build.py` **não agrega** status —
+  cada linha de `meta[]` carrega o status cru daquela linha (`cs`/`as`/`ds` =
+  campanha/conjunto/anúncio). A resolução do "mais recente" é feita no navegador
+  (`latestStatusByDim()` em `build/app.js`), escopada pela MESMA seleção de
+  campanha/conjunto/anúncio (drill-down) que já filtra as métricas da tabela —
+  **de propósito ignorando o filtro de DATA da topbar** (o indicativo sempre usa
+  a linha mais recente disponível na planilha inteira, não só as do período
+  selecionado; o filtro de data continua valendo pra tudo o mais). **Bug real
+  corrigido neste cliente** (já reincidiu 2x antes desta correção): este cliente
+  reaproveita os MESMOS nomes de anúncio/conjunto (`AD01`, `AD02`, `AD03`...) em
+  campanhas diferentes (`Teste de Ads`, `Repescagem`, `Top Ads`, `Teste de Ads 6`,
+  ...) para anúncios **DISTINTOS** (Ad ID diferente por campanha). Uma versão
+  anterior computava o status agregando por NOME sozinho (ignorando a campanha),
+  então um "AD02" pausado na campanha selecionada aparecia como ativo só porque
+  outra campanha tinha um "AD02" (anúncio diferente!) ativo na mesma data. Por
+  isso o cálculo tem que ficar no navegador: só lá dá pra escopar pela mesma
+  seleção de campanha das tabelas. Nunca volte a agregar/achatar esse status por
+  nome sozinho no `build.py` — teste sempre com pelo menos 2 campanhas
+  reaproveitando o mesmo nome de anúncio antes de mexer nisso de novo.
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 

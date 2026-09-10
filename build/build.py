@@ -155,31 +155,6 @@ def is_active_status(status: str) -> bool:
     return norm(status) in ("active", "ativo", "ativa")
 
 
-def _flatten_active_by_name(status_by_camp_name):
-    """{(campanha, nome): (day, status)} -> {nome: ativo} agregando por nome.
-
-    Nomes de anúncio/conjunto se repetem entre campanhas (ex. "AD03" reaparece
-    em campanhas de teste antigas já encerradas). Um OR simples entre TODAS as
-    campanhas que já usaram aquele nome, em qualquer data do histórico, faria
-    um "AD03" ativo numa campanha antiga e já parada continuar marcando o
-    nome como ativo para sempre, mesmo que toda instância atual/recente esteja
-    pausada (o caso real: Gerenciador de Anúncios mostra "Off", mas a campanha
-    velha nunca teve o status revisitado nas linhas mais novas da planilha).
-    Por isso o OR é restrito às campanhas com a data mais recente conhecida
-    PARA AQUELE NOME — só a informação mais atual conta.
-    """
-    latest_day = {}
-    for (_camp, name), (day, _status) in status_by_camp_name.items():
-        if name not in latest_day or (day or "") > (latest_day[name] or ""):
-            latest_day[name] = day
-    out = {}
-    for (_camp, name), (day, status) in status_by_camp_name.items():
-        if (day or "") != (latest_day[name] or ""):
-            continue
-        out[name] = out.get(name, False) or is_active_status(status)
-    return out
-
-
 def is_main_product(prod: str) -> bool:
     return norm(prod).startswith(MAIN_PRODUCT_PREFIX)
 
@@ -289,21 +264,18 @@ def process(meta_rows, sales_rows):
     )
 
     meta = []
-    # Status (ativo/pausado) mais recente de cada campanha/conjunto/anúncio —
-    # a planilha repete o status em toda linha diária, então guarda-se o de
-    # maior data por chave. Conjunto/anúncio são rastreados por (campanha, nome)
-    # — não só pelo nome — porque nomes de anúncio (e, potencialmente, de
-    # conjunto) se repetem entre campanhas diferentes (ex. "AD03" existindo em
-    # duas campanhas distintas); rastrear só por nome faz o status de um
-    # anúncio pausado numa campanha vazar e sobrescrever o de um anúncio ativo
-    # com o mesmo nome em outra campanha.
-    camp_status, adset_status, ad_status = {}, {}, {}
-    def _track_status(store, key, day, status):
-        if not status:
-            return
-        prev = store.get(key)
-        if prev is None or (day or "") >= (prev[0] or ""):
-            store[key] = (day, status)
+    # Status ATIVO/PAUSADO de cada linha (campanha/conjunto/anúncio) vai direto
+    # em cada registro de `meta` (campos cs/as/ds abaixo) — cru, sem agregação
+    # nenhuma aqui. Nomes de anúncio/conjunto se repetem entre campanhas
+    # diferentes (ex. "AD03" existindo em várias campanhas como anúncios
+    # DISTINTOS, com Ad ID diferente) — agregar por nome no build (como uma
+    # versão anterior fazia) faz o status de um anúncio ativo numa campanha
+    # vazar por engano para um anúncio pausado com o mesmo nome em outra
+    # campanha. Por isso o "mais recente" é resolvido no navegador (build/app.js),
+    # escopado pela MESMA seleção de campanha/conjunto (drill-down) que já
+    # filtra as métricas da tabela — nunca misturando linhas de campanhas
+    # diferentes — e ignorando o filtro de DATA da topbar (o status usa sempre
+    # a linha mais recente disponível, não só as do período selecionado).
     # (campanha, anúncio) normalizados -> (campanha, conjunto) reais do Meta.
     # A chave inclui a CAMPANHA porque o mesmo nome de anúncio (ex. "AD01") se
     # repete em campanhas diferentes; casar só pelo nome do anúncio atribuiria a
@@ -329,9 +301,9 @@ def process(meta_rows, sales_rows):
         if link and ad not in ad_links:
             ad_links[ad] = link
         day = parse_date(cell(row, midx["day"]))
-        _track_status(camp_status, camp, day, cell(row, midx["campaign_status"]))
-        _track_status(adset_status, (norm(camp), adset), day, cell(row, midx["adset_status"]))
-        _track_status(ad_status, (norm(camp), ad), day, cell(row, midx["ad_status"]))
+        camp_st = cell(row, midx["campaign_status"])
+        adset_st = cell(row, midx["adset_status"])
+        ad_st = cell(row, midx["ad_status"])
         meta.append({
             "d": day,
             "camp": camp, "adset": adset, "ad": ad,
@@ -343,6 +315,11 @@ def process(meta_rows, sales_rows):
             "vv3": to_float(cell(row, midx["vv3"])),
             "vv50": to_float(cell(row, midx["vv50"])),
             "vv95": to_float(cell(row, midx["vv95"])),
+            # Status cru desta linha (None = coluna vazia/sem info nesta linha,
+            # não conta na resolução do "mais recente" feita em app.js).
+            "cs": is_active_status(camp_st) if camp_st else None,
+            "as": is_active_status(adset_st) if adset_st else None,
+            "ds": is_active_status(ad_st) if ad_st else None,
         })
 
     # ---------------- Aba COMPRADORES ----------------
@@ -494,19 +471,6 @@ def process(meta_rows, sales_rows):
         "meta": meta,
         "sales": sales,
         "ad_links": ad_links,
-        # Status ATIVO/PAUSADO (mais recente) de cada campanha/conjunto/anúncio,
-        # usado só p/ o indicativo visual nas tabelas de otimização (não tem
-        # nenhum efeito em cálculo/filtro). Só entram nomes com status conhecido.
-        # adset_status/ad_status são rastreados por (campanha, nome) — ver
-        # _track_status acima — porque o mesmo nome pode existir em campanhas
-        # diferentes como anúncios/conjuntos DISTINTOS. As tabelas de Conjuntos/
-        # Anúncios agregam por nome (mesma lógica que já soma o gasto entre
-        # campanhas quando o nome colide), então aqui achatamos para o nome
-        # como chave, marcando ATIVO se QUALQUER anúncio/conjunto real com
-        # aquele nome estiver ativo — consistente com a agregação de gasto.
-        "camp_active": {k: is_active_status(v[1]) for k, v in camp_status.items()},
-        "adset_active": _flatten_active_by_name(adset_status),
-        "ad_active": _flatten_active_by_name(ad_status),
         # Briefings do Gestor por período (gerados por IA 1x/dia via Routine e
         # salvos em build/relatorios.json). Preenchido em process()/main via
         # load_briefings(); fica {} se o arquivo não existir.
