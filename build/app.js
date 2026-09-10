@@ -669,7 +669,8 @@ function renderRelatorios(){
     return {name,gasto:d.gasto,vendas:ag.vendas,cac:d.cac,roas:d.roas}; });
   ads.sort((a,b)=>{ const ra=a.roas==null?-1:a.roas, rb=b.roas==null?-1:b.roas; if(rb!==ra) return rb-ra;
     const ca=a.cac==null?Infinity:a.cac, cb=b.cac==null?Infinity:b.cac; return ca-cb; });
-  const top=ads.slice(0,5), topSet=new Set(top.map(a=>a.name));
+  const TOP_MIN_VENDAS=3;
+  const top=ads.filter(a=>a.vendas>=TOP_MIN_VENDAS).slice(0,5), topSet=new Set(top.map(a=>a.name));
   const worst=ads.filter(a=>!topSet.has(a.name)).slice(-5).reverse();
   const adCols=[{label:'Anúncio',cls:'dim'},{label:'Gasto'},{label:'Vendas'},{label:'CAC'},{label:'ROAS'},{label:'Link',cls:'dim'}];
   const adRows=list=>list.map(a=>[{v:esc(a.name),cls:'dim'},{v:brl(a.gasto)},{v:intf(a.vendas)},
