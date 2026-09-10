@@ -41,7 +41,7 @@ const TODAY = B.today || B.date_max;
 
 /* ---------------- STATE ---------------- */
 const STATE = {
-  page:'geral', from:B.date_min, to:B.date_max, preset:'todo', tax:true,
+  page:'geral', from:B.date_min, to:B.date_max, preset:'todo', tax:false,
   currency: localStorage.getItem('dm_currency') || 'brl',
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
@@ -825,7 +825,7 @@ document.getElementById('buildFoot').textContent='build __BUILD_ID__';
 document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 
 syncDateInputs();
-document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta ON por padrão */
+document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta OFF por padrão */
 syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
 setPage(location.hash==='#meta'?'meta':(location.hash==='#rel'?'rel':'geral'));
 
