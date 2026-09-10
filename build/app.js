@@ -448,23 +448,35 @@ function metaScopeAllDates(ex){
   if(ex!=='D'&&STATE.mSelAd.size){ fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
   return fM;
 }
-/* {nome: ativo} pra uma dimensão (camp/adset/ad), a partir da linha de MAIOR
-   data disponível (dentro do escopo já filtrado por campanha/conjunto/anúncio
-   selecionados — nunca mistura linhas de campanhas diferentes reaproveitando
-   o mesmo nome). statusField é o campo cru da linha ('cs'/'as'/'ds' — ver
-   build/build.py); linhas com esse campo null (sem status naquela linha) são
-   ignoradas. */
-function latestStatusByDim(fM, dim, statusField){
-  const latest={};
+/* {nome: ativo} pra uma dimensão (camp/adset/ad). Resolve em 2 passos pra não
+   repetir nenhum dos 2 bugs já corrigidos nesse indicativo:
+   1) status "mais recente" é calculado por ENTIDADE REAL (entityKeyFn — a
+      combinação campanha+conjunto+anúncio), nunca por nome sozinho — assim a
+      recência de um anúncio nunca vaza pra outro anúncio com o mesmo nome
+      numa campanha diferente.
+   2) o valor exibido pra cada NOME (dimKeyFn, o que a tabela agrupa) é um OU
+      entre todas as entidades reais — dentro do escopo já filtrado por
+      campanha/conjunto/anúncio selecionados (drill-down) — que têm esse nome:
+      só mostra pausado se NENHUMA duplicata daquele nome, em nenhum outro
+      conjunto/campanha visível no escopo atual, estiver ativa. Isso é
+      intencional: a tabela mesclada de Anúncios já soma o gasto de todas as
+      duplicatas do nome (mesma lógica), então o indicativo segue o mesmo
+      critério — só quando o usuário faz drill-down numa campanha específica
+      é que a duplicata some do escopo e o indicativo passa a refletir só
+      aquela campanha.
+   statusField é o campo cru da linha ('cs'/'as'/'ds' — ver build/build.py);
+   linhas com esse campo null (sem status naquela linha) são ignoradas. */
+function entityActiveMap(fM, entityKeyFn, dimKeyFn, statusField){
+  const perEntity={};
   fM.forEach(r=>{
     const st=r[statusField];
     if(st==null) return;
-    const k=r[dim];
-    const prev=latest[k];
-    if(!prev || (r.d||'')>=(prev.d||'')) latest[k]={d:r.d, v:st};
+    const ek=entityKeyFn(r);
+    const prev=perEntity[ek];
+    if(!prev || (r.d||'')>=(prev.d||'')) perEntity[ek]={d:r.d, v:st, dim:dimKeyFn(r)};
   });
   const out={};
-  Object.keys(latest).forEach(k=>out[k]=latest[k].v);
+  Object.values(perEntity).forEach(e=>{ out[e.dim] = (out[e.dim]||false) || e.v; });
   return out;
 }
 /* Cada dimensão (campanha/conjunto/anúncio) tem seu próprio conjunto de seleção,
@@ -514,11 +526,11 @@ function renderMeta(){
   function totRowOf(tt){const dv=derive(tt);return Object.assign({dim:null}, metricCells(tt,dv));}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
   renderTable({id:'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fS,Sc.fM,'camp'),'tCamp'), total:totRowOf(totals(Sc.fS,Sc.fM)),
-    statusMap:latestStatusByDim(metaScopeAllDates('C'),'camp','cs'), selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:entityActiveMap(metaScopeAllDates('C'), r=>norm(r.camp), r=>r.camp, 'cs'), selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fS,Sa.fM,'adset'),'tAdset'), total:totRowOf(totals(Sa.fS,Sa.fM)),
-    statusMap:latestStatusByDim(metaScopeAllDates('A'),'adset','as'), selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:entityActiveMap(metaScopeAllDates('A'), r=>norm(r.camp)+'||'+norm(r.adset), r=>r.adset, 'as'), selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
   renderTable({id:'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fS,Sd.fM,'ad'),'tAd'), total:totRowOf(totals(Sd.fS,Sd.fM)),
-    statusMap:latestStatusByDim(metaScopeAllDates('D'),'ad','ds'), selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
+    statusMap:entityActiveMap(metaScopeAllDates('D'), r=>norm(r.camp)+'||'+norm(r.ad), r=>r.ad, 'ds'), selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra

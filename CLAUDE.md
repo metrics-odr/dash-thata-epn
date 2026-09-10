@@ -143,23 +143,35 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
 - **Indicativo ATIVO/PAUSADO (bolinha antes do nome nas tabelas de Campanhas/
   Conjuntos/Anúncios da aba Meta Ads)**: `build/build.py` **não agrega** status —
   cada linha de `meta[]` carrega o status cru daquela linha (`cs`/`as`/`ds` =
-  campanha/conjunto/anúncio). A resolução do "mais recente" é feita no navegador
-  (`latestStatusByDim()` em `build/app.js`), escopada pela MESMA seleção de
-  campanha/conjunto/anúncio (drill-down) que já filtra as métricas da tabela —
-  **de propósito ignorando o filtro de DATA da topbar** (o indicativo sempre usa
-  a linha mais recente disponível na planilha inteira, não só as do período
-  selecionado; o filtro de data continua valendo pra tudo o mais). **Bug real
-  corrigido neste cliente** (já reincidiu 2x antes desta correção): este cliente
-  reaproveita os MESMOS nomes de anúncio/conjunto (`AD01`, `AD02`, `AD03`...) em
-  campanhas diferentes (`Teste de Ads`, `Repescagem`, `Top Ads`, `Teste de Ads 6`,
-  ...) para anúncios **DISTINTOS** (Ad ID diferente por campanha). Uma versão
-  anterior computava o status agregando por NOME sozinho (ignorando a campanha),
-  então um "AD02" pausado na campanha selecionada aparecia como ativo só porque
-  outra campanha tinha um "AD02" (anúncio diferente!) ativo na mesma data. Por
-  isso o cálculo tem que ficar no navegador: só lá dá pra escopar pela mesma
-  seleção de campanha das tabelas. Nunca volte a agregar/achatar esse status por
-  nome sozinho no `build.py` — teste sempre com pelo menos 2 campanhas
-  reaproveitando o mesmo nome de anúncio antes de mexer nisso de novo.
+  campanha/conjunto/anúncio). A resolução fica toda no navegador
+  (`entityActiveMap()` em `build/app.js`), em 2 passos, porque este cliente
+  reaproveita os MESMOS nomes de anúncio/conjunto (`AD01`, `AD02`, `AD03`...)
+  em campanhas diferentes (`Teste de Ads`, `Repescagem`, `Top Ads`, `Teste de
+  Ads 6`, ...) para anúncios **DISTINTOS** (Ad ID diferente por campanha):
+  1) o status "mais recente" (**de propósito ignorando o filtro de DATA da
+     topbar** — sempre a linha mais recente disponível na planilha inteira,
+     não só as do período selecionado; o filtro de data continua valendo pra
+     tudo o mais) é calculado por **entidade real** (campanha+conjunto+anúncio
+     juntos), nunca por nome sozinho — a recência de um anúncio nunca pode
+     vazar pra outro anúncio com o mesmo nome numa campanha diferente
+     (**bug real corrigido 2x antes desta versão**: computar por nome sozinho
+     fazia um "AD02" pausado na campanha selecionada aparecer como ativo só
+     porque outro "AD02" — anúncio diferente! — estava ativo em outra
+     campanha na mesma data);
+  2) o valor exibido por NOME (o que a tabela mesclada de Anúncios/Conjuntos
+     agrupa) é um **OU entre as entidades reais daquele nome dentro do escopo
+     atual** (drill-down de campanha/conjunto/anúncio selecionado nas
+     tabelas): na visão mesclada (sem filtrar campanha), só mostra PAUSADO se
+     **nenhuma duplicata** daquele nome, em nenhuma outra campanha/conjunto,
+     estiver ativa — pedido explícito do cliente, e consistente com a tabela
+     mesclada já somar o GASTO de todas as duplicatas do nome. Ao fazer
+     drill-down numa campanha específica, a duplicata sai do escopo e o
+     indicativo passa a refletir só aquela campanha (é assim que se vê um
+     "AD02" pausado de verdade, mesmo com outro "AD02" ativo alhures).
+  Nunca volte a agregar/achatar esse status por nome sozinho no `build.py`, e
+  nunca calcule a recência por nome sozinho (sem escopar por campanha) — teste
+  sempre com pelo menos 2 campanhas reaproveitando o mesmo nome de anúncio,
+  uma ativa e outra pausada, antes de mexer nisso de novo.
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
