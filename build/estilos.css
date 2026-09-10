@@ -16,6 +16,7 @@
   .sidebar .foot{margin-top:auto; border-top:1px solid rgba(255,255,255,.08); padding:12px 20px; font-size:11px; opacity:.35}
   .ham{display:none}
   #navToggle{display:none}
+  .nav-backdrop{display:none}
 
   .main-area{margin-left:220px; flex:1 1 auto; min-width:0; display:flex; flex-direction:column}
 
@@ -201,10 +202,53 @@
   .foot{margin-top:26px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--border); padding-top:12px}
 
   @media(max-width:900px){
-    .sidebar{transform:translateX(-100%); transition:transform .2s}
+    .sidebar{transform:translateX(-100%); transition:transform .2s; z-index:100; box-shadow:0 0 32px rgba(0,0,0,.35)}
     #navToggle:checked ~ .sidebar{transform:none}
     .main-area{margin-left:0}
-    label.ham{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:9px; cursor:pointer; background:var(--surface)}
+    label.ham{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:9px; cursor:pointer; background:var(--surface); flex:0 0 auto}
+
+    /* fundo escurecido atrás do menu; cobre a tela e fecha ao tocar fora */
+    .nav-backdrop{display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; opacity:0; transition:opacity .2s}
+    #navToggle:checked ~ .nav-backdrop{display:block; opacity:1}
+
+    /* topbar: menos respiro, itens não quebram tão cedo */
+    .topbar{padding:8px 12px; gap:8px}
+    .topbar .ptitle{font-size:14px}
+    .sep{display:none}
+    .updated{display:none}
+    .cur-toggle{align-items:flex-start}
+
+    /* mais espaço horizontal útil p/ os gráficos em telas estreitas */
+    .page-content{padding:14px 12px 40px}
+    .sec-title{margin:18px 0 10px}
+    .grid{gap:12px}
+    .funnel-charts{gap:12px}
+
+    /* gráficos: proporção mais baixa/larga, melhor leitura em tela estreita */
+    .chart-box{height:200px}
+    .chart-sm{height:170px}
+    .card, .panel .panel-chart{padding:12px}
+
+    /* KPIs em 2 colunas fixas (em vez de auto-fit, que às vezes cai p/ 1) */
+    .kpis.n1{grid-template-columns:repeat(2,1fr)}
+    .kpis.n2{grid-template-columns:repeat(2,1fr)}
+    .kpi{padding:11px 12px}
+    .kpi .kv{font-size:19px}
+    .kpis.n2 .kpi .kv{font-size:16px}
+
+    /* funil: métricas secundárias (CAC/ROAS) não ficam espremidas à direita */
+    .step{padding:10px 12px}
+    .step .secs{justify-content:flex-start; margin-left:0; width:100%}
+
+    /* tabelas: menos altura fixa, sobra mais tela p/ o resto */
+    .tbl-normal{max-height:220px}
+    .tbl-double{max-height:340px}
+    .pair-chart{height:160px}
+
+    .health-card{padding:14px 15px; gap:16px}
+    .health-bars{grid-template-columns:1fr}
+    .rel-cards{grid-template-columns:repeat(2,1fr)}
+    .ia-cards{grid-template-columns:1fr}
   }
 
   /* ---------- IA Insights ---------- */
