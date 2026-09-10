@@ -156,10 +156,26 @@ def is_active_status(status: str) -> bool:
 
 
 def _flatten_active_by_name(status_by_camp_name):
-    """{(campanha, nome): (day, status)} -> {nome: ativo} agregando por nome
-    (OR entre campanhas que colidem no mesmo nome de conjunto/anúncio)."""
+    """{(campanha, nome): (day, status)} -> {nome: ativo} agregando por nome.
+
+    Nomes de anúncio/conjunto se repetem entre campanhas (ex. "AD03" reaparece
+    em campanhas de teste antigas já encerradas). Um OR simples entre TODAS as
+    campanhas que já usaram aquele nome, em qualquer data do histórico, faria
+    um "AD03" ativo numa campanha antiga e já parada continuar marcando o
+    nome como ativo para sempre, mesmo que toda instância atual/recente esteja
+    pausada (o caso real: Gerenciador de Anúncios mostra "Off", mas a campanha
+    velha nunca teve o status revisitado nas linhas mais novas da planilha).
+    Por isso o OR é restrito às campanhas com a data mais recente conhecida
+    PARA AQUELE NOME — só a informação mais atual conta.
+    """
+    latest_day = {}
+    for (_camp, name), (day, _status) in status_by_camp_name.items():
+        if name not in latest_day or (day or "") > (latest_day[name] or ""):
+            latest_day[name] = day
     out = {}
-    for (_camp, name), (_day, status) in status_by_camp_name.items():
+    for (_camp, name), (day, status) in status_by_camp_name.items():
+        if (day or "") != (latest_day[name] or ""):
+            continue
         out[name] = out.get(name, False) or is_active_status(status)
     return out
 
