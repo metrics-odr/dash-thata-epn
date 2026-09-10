@@ -109,6 +109,32 @@ Heurísticas: CTR baixo + ROAS/CAC bons = anúncio qualifica (não mexer). CR ba
 cai só num conjunto = público daquele conjunto. Volume baixo = ruído: não corte
 estrutura por 1–2 dias ruins; priorize tendência sobre valor absoluto.
 
+### Antes de recomendar pausar uma campanha/conjunto: olhe os anúncios de dentro
+
+Uma campanha com CAC ruim/ROAS baixo **nem sempre está ruim por inteiro** — às
+vezes é **um anúncio específico puxando muita verba** com performance péssima
+e distorcendo a média de toda a estrutura; pausar só esse anúncio pode ser
+suficiente para o resto da campanha voltar a rodar bem (caso real já observado
+neste funil: "Top Ads 3" com CAC/ROAS ruins tinha um anúncio consumindo a
+maior parte do gasto sozinho — ao pausar esse anúncio, a campanha melhorou,
+sem precisar pausar a campanha inteira).
+
+Por isso, **antes de sugerir `Cortar`/pausar no nível de campanha ou
+conjunto**, confira `top_anuncios`/`piores_anuncios` (e, se a campanha tiver
+poucos anúncios ativos, é seguro inferir isso mesmo sem o dado explícito) em
+busca de anúncios daquela campanha com gasto desproporcional e CAC/ROAS
+ruins:
+- Se **um anúncio isolado** concentra a maior parte do gasto da campanha e
+  puxa o CAC/ROAS para baixo → recomende `Cortar` **o anúncio**, não a
+  campanha, e mencione a hipótese ("cortar o anúncio X pode ser suficiente
+  para a campanha voltar a performar, sem precisar pausar tudo").
+- Só recomende `Cortar` no nível de **campanha inteira** quando o problema for
+  disseminado entre vários anúncios/conjuntos dela (não concentrado em um só),
+  ou quando não houver estrutura individual identificável nos dados
+  disponíveis para isolar o culpado.
+- Essa mesma lógica vale de conjunto para anúncio (um conjunto ruim pode ter
+  um único anúncio problemático dentro dele).
+
 ## Metas e código de cor (só CAC e ROAS)
 
 Metas em `build/config.py` (`CAC_TARGET`, `ROAS_TARGET`); vêm no metrics JSON em
@@ -132,7 +158,11 @@ anúncio, usando sempre uma das 4 tags abaixo:
   CAC no limite da meta, ConvCHK baixa com o resto do funil saudável): ação
   concreta de ajuste, não só "aguardar".
 - **`Cortar`** — estrutura que só gasta sem retorno e já teve gasto suficiente
-  para julgar (ex.: "pausar anúncio X após ~1 CAC sem venda").
+  para julgar (ex.: "pausar anúncio X após ~1 CAC sem venda"). Antes de marcar
+  uma **campanha/conjunto** inteiro como `Cortar`, confira se o problema não
+  está concentrado em um único anúncio de dentro dela (ver seção "Antes de
+  recomendar pausar uma campanha/conjunto" acima) — se estiver, prefira
+  `Cortar` só o anúncio.
 - **`Observar`** — dado insuficiente (pouco gasto/tempo de vida) ou oscilação
   normal de tráfego frio: aguardar mais dias antes de agir.
 
