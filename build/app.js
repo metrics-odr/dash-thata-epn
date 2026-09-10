@@ -515,6 +515,10 @@ const HEALTH_GOAL_KEY='dm_health_cac_goal';
 STATE.cacGoal=(()=>{ const v=parseFloat(localStorage.getItem(HEALTH_GOAL_KEY));
   if(isFinite(v)&&v>0) return v;
   return (CAC_TARGET&&CAC_TARGET>0)?CAC_TARGET:(HIST.cac||null); })();
+/* meta de ROAS: usa ROAS_TARGET (build/config.py) quando configurado; senão
+   ancora no ROAS histórico da conta — sem meta o funil não é "saudável", só
+   "igual ao de sempre", mas garante que a nota sempre reflita lucratividade. */
+const HEALTH_ROAS_TARGET=(ROAS_TARGET&&ROAS_TARGET>0)?ROAS_TARGET:(HIST.roas||null);
 const HEALTH_TOL=0.85; /* piso = 85% da taxa histórica da conta */
 const HEALTH_CTR_MIN=HIST.ctr!=null?HIST.ctr*HEALTH_TOL:null;
 const HEALTH_CR_MIN=HIST.cr!=null?HIST.cr*HEALTH_TOL:null;
@@ -539,13 +543,16 @@ function renderHealthCard(d){
   const goal=STATE.cacGoal;
   const minCtr=HEALTH_CTR_MIN, minCr=HEALTH_CR_MIN, minVischk=HEALTH_VISCHK_MIN, minConvchk=HEALTH_CONVCHK_MIN;
 
+  const pRoas=healthPerf(d.roas,HEALTH_ROAS_TARGET,true);
   const pCac=healthPerf(d.cac,goal,false);
   const pCtr=healthPerf(d.ctr,minCtr,true);
   const pCr=healthPerf(d.cr,minCr,true);
   const pVischk=healthPerf(d.vischk,minVischk,true);
   const pConvchk=healthPerf(d.convchk,minConvchk,true);
 
-  const comps=[[pCac,0.4],[pCtr,0.15],[pCr,0.15],[pVischk,0.15],[pConvchk,0.15]].filter(c=>c[0]!=null);
+  /* ROAS tem o maior peso: funil saudável precisa dar lucro, não só bater metas
+     operacionais de custo/conversão — por isso pesa mais que o próprio CAC. */
+  const comps=[[pRoas,0.35],[pCac,0.25],[pCtr,0.1],[pCr,0.1],[pVischk,0.1],[pConvchk,0.1]].filter(c=>c[0]!=null);
   const wSum=comps.reduce((s,c)=>s+c[1],0);
   const score=wSum? Math.max(0,Math.min(100,Math.round(comps.reduce((s,c)=>s+Math.min(c[0],1.3)*c[1],0)/wSum*100))) : null;
 
@@ -561,13 +568,14 @@ function renderHealthCard(d){
   const badgeEl=document.getElementById('healthBadge');
   badgeEl.textContent = score==null?'--':`${band.lbl} · ${score}/100`;
   badgeEl.className = 'health-badge '+band.cls;
-  document.getElementById('healthDesc').textContent = goal ? 'ancorado na meta de CAC' : 'defina a meta de CAC abaixo p/ calcular a nota';
+  document.getElementById('healthDesc').textContent = goal ? 'ROAS (lucratividade) tem o maior peso na nota' : 'defina a meta de CAC abaixo p/ calcular a nota';
 
   const goalInput=document.getElementById('healthGoalInput');
   document.getElementById('healthGoalCur').textContent = healthCurSym();
   if(document.activeElement!==goalInput) goalInput.value = goal!=null? healthToDisplay(goal).toFixed(2) : '';
 
   document.getElementById('healthBars').innerHTML = [
+    healthBar('ROAS · meta '+(HEALTH_ROAS_TARGET?roasf(HEALTH_ROAS_TARGET):'—'), roasf(d.roas), pRoas),
     healthBar('CAC · meta '+(goal!=null?brl(goal):'—'), brl(d.cac), pCac),
     healthBar('CTR · mín '+(minCtr!=null?pct(minCtr):'—'), pct(d.ctr), pCtr),
     healthBar('CR · mín '+(minCr!=null?pct(minCr):'—'), pct(d.cr), pCr),
