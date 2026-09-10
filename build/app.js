@@ -550,13 +550,18 @@ const AD_LINKS=DATA.ad_links||{};
    de conversão de cada etapa, estipulados a partir do histórico da conta. */
 const HIST=derive(totals(SALES,META));
 const HEALTH_GOAL_KEY='dm_health_cac_goal';
+const ROAS_GOAL_KEY='dm_health_roas_goal';
 STATE.cacGoal=(()=>{ const v=parseFloat(localStorage.getItem(HEALTH_GOAL_KEY));
   if(isFinite(v)&&v>0) return v;
   return (CAC_TARGET&&CAC_TARGET>0)?CAC_TARGET:(HIST.cac||null); })();
-/* meta de ROAS: usa ROAS_TARGET (build/config.py) quando configurado; senão
-   ancora no ROAS histórico da conta — sem meta o funil não é "saudável", só
-   "igual ao de sempre", mas garante que a nota sempre reflita lucratividade. */
-const HEALTH_ROAS_TARGET=(ROAS_TARGET&&ROAS_TARGET>0)?ROAS_TARGET:(HIST.roas||null);
+/* meta de ROAS: editável no dashboard (mesmo padrão da meta de CAC), salva no
+   navegador; se ainda não foi digitada, cai para ROAS_TARGET (build/config.py)
+   e, por fim, para o ROAS histórico da conta — sem meta o funil não é
+   "saudável", só "igual ao de sempre", mas garante que a nota sempre reflita
+   lucratividade. */
+STATE.roasGoal=(()=>{ const v=parseFloat(localStorage.getItem(ROAS_GOAL_KEY));
+  if(isFinite(v)&&v>0) return v;
+  return (ROAS_TARGET&&ROAS_TARGET>0)?ROAS_TARGET:(HIST.roas||null); })();
 const HEALTH_TOL=0.85; /* piso = 85% da taxa histórica da conta */
 const HEALTH_CTR_MIN=HIST.ctr!=null?HIST.ctr*HEALTH_TOL:null;
 const HEALTH_CR_MIN=HIST.cr!=null?HIST.cr*HEALTH_TOL:null;
@@ -581,7 +586,7 @@ function renderHealthCard(d){
   const goal=STATE.cacGoal;
   const minCtr=HEALTH_CTR_MIN, minCr=HEALTH_CR_MIN, minVischk=HEALTH_VISCHK_MIN, minConvchk=HEALTH_CONVCHK_MIN;
 
-  const pRoas=healthPerf(d.roas,HEALTH_ROAS_TARGET,true);
+  const pRoas=healthPerf(d.roas,STATE.roasGoal,true);
   const pCac=healthPerf(d.cac,goal,false);
   const pCtr=healthPerf(d.ctr,minCtr,true);
   const pCr=healthPerf(d.cr,minCr,true);
@@ -611,9 +616,11 @@ function renderHealthCard(d){
   const goalInput=document.getElementById('healthGoalInput');
   document.getElementById('healthGoalCur').textContent = healthCurSym();
   if(document.activeElement!==goalInput) goalInput.value = goal!=null? healthToDisplay(goal).toFixed(2) : '';
+  const roasGoalInput=document.getElementById('healthGoalInputRoas');
+  if(document.activeElement!==roasGoalInput) roasGoalInput.value = STATE.roasGoal!=null? STATE.roasGoal.toFixed(2) : '';
 
   document.getElementById('healthBars').innerHTML = [
-    healthBar('ROAS · meta '+(HEALTH_ROAS_TARGET?roasf(HEALTH_ROAS_TARGET):'—'), roasf(d.roas), pRoas),
+    healthBar('ROAS · meta '+(STATE.roasGoal?roasf(STATE.roasGoal):'—'), roasf(d.roas), pRoas),
     healthBar('CAC · meta '+(goal!=null?brl(goal):'—'), brl(d.cac), pCac),
     healthBar('CTR · mín '+(minCtr!=null?pct(minCtr):'—'), pct(d.ctr), pCtr),
     healthBar('CR · mín '+(minCr!=null?pct(minCr):'—'), pct(d.cr), pCr),
@@ -629,16 +636,23 @@ if(!window.__healthGoalWired){
       STATE.cacGoal=(isFinite(v)&&v>0)?healthFromDisplay(v):null;
       if(STATE.cacGoal!=null) localStorage.setItem(HEALTH_GOAL_KEY,String(STATE.cacGoal));
       else localStorage.removeItem(HEALTH_GOAL_KEY);
-      if(STATE.page==='rel'){ const fM=metaActive(), fSall=salesActive();
-        renderHealthCard(derive(totals(fSall,fM))); }
+      if(STATE.page==='rel') renderRelatorios();
+    }
+    if(e.target&&e.target.id==='healthGoalInputRoas'){
+      const v=parseFloat(e.target.value);
+      STATE.roasGoal=(isFinite(v)&&v>0)?v:null;
+      if(STATE.roasGoal!=null) localStorage.setItem(ROAS_GOAL_KEY,String(STATE.roasGoal));
+      else localStorage.removeItem(ROAS_GOAL_KEY);
+      if(STATE.page==='rel') renderRelatorios();
     }
   });
 }
-/* desempenho vs meta: CAC menor=melhor (meta/valor); ROAS maior=melhor (valor/meta) */
+/* desempenho vs meta (metas editáveis no dashboard, ver STATE.cacGoal/roasGoal
+   acima): CAC menor=melhor (meta/valor); ROAS maior=melhor (valor/meta) */
 function relPerf(v,kind){
   if(v==null||!isFinite(v)) return null;
-  if(kind==='roas'){ return ROAS_TARGET?v/ROAS_TARGET:null; }
-  return (CAC_TARGET&&v>0)?CAC_TARGET/v:null;
+  if(kind==='roas'){ return STATE.roasGoal?v/STATE.roasGoal:null; }
+  return (STATE.cacGoal&&v>0)?STATE.cacGoal/v:null;
 }
 function relColor(v,kind){ const p=relPerf(v,kind); if(p==null) return '';
   if(p<REL_BAND_LO) return 'rc-red'; if(p<1) return 'rc-yellow';

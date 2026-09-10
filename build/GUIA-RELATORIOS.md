@@ -143,6 +143,16 @@ vermelho · `0,70–0,99` amarelo · `1,00–1,29` verde · `≥1,30` ciano. **N
 o código de cor no texto** — ele já aparece nos cards/tabelas; o briefing
 interpreta *por que* e *o que fazer*.
 
+Essas mesmas metas também são **editáveis direto na dashboard** (aba
+Relatórios → Saúde do funil → "Meta de CAC"/"Meta de ROAS") — o valor digitado
+lá fica salvo no navegador de quem editou e é o que colore os cards/tabelas ao
+vivo, podendo divergir do `config.py` se alguém já tiver ajustado por lá.
+`config.py` continua sendo a única fonte que este script (rodando fora do
+navegador) enxerga — **não** sugira no briefing que o usuário "configure
+`CAC_TARGET`/`ROAS_TARGET` em `build/config.py`"; se as metas estiverem
+zeradas, trate como meta não definida e não presuma que falta configurar algo
+(pode já estar configurado só no navegador de quem usa a dashboard).
+
 ## Tom e conteúdo esperado
 
 Português, **profundo mas sem enrolação**, pouco técnico (explique quando
