@@ -448,23 +448,37 @@ function metaScopeAllDates(ex){
   if(ex!=='D'&&STATE.mSelAd.size){ fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
   return fM;
 }
-/* {nome: ativo} pra uma dimensão (camp/adset/ad), a partir da linha de MAIOR
-   data disponível (dentro do escopo já filtrado por campanha/conjunto/anúncio
-   selecionados — nunca mistura linhas de campanhas diferentes reaproveitando
-   o mesmo nome). statusField é o campo cru da linha ('cs'/'as'/'ds' — ver
-   build/build.py); linhas com esse campo null (sem status naquela linha) são
-   ignoradas. */
+/* {nome: ativo} pra uma dimensão (camp/adset/ad). Resolvida em 2 passos:
+   1) status mais recente por ENTIDADE FÍSICA (chave = camp+adset+ad pro nível
+      anúncio, camp+adset pro nível conjunto — nunca só o nome sozinho), a
+      partir da linha de MAIOR data disponível (ignora o filtro de período da
+      topbar de propósito) dentro do escopo já filtrado por campanha/conjunto/
+      anúncio selecionados (metaScopeAllDates) — nunca mistura o histórico de
+      campanhas diferentes na hora de achar "a mais recente".
+   2) combina por NOME DE EXIBIÇÃO com regra OU: dentro do escopo atual, se ao
+      menos UMA entidade com esse nome estiver ATIVA (pelo seu próprio status
+      mais recente), o nome mostra ATIVO; só mostra PAUSADO se TODAS as
+      entidades daquele nome, no escopo atual, estiverem pausadas.
+      Isso é o que faz sem filtro nenhum "AD03 pausado numa campanha, ativo em
+      outra" aparecer como ATIVO (existe pelo menos um ativo) — e, ao filtrar
+      pra a campanha em que está pausado, só essa entidade sobra no escopo e
+      aí sim aparece PAUSADO. statusField é o campo cru da linha
+      ('cs'/'as'/'ds' — ver build/build.py); linhas com esse campo null (sem
+      status naquela linha) são ignoradas. */
 function latestStatusByDim(fM, dim, statusField){
-  const latest={};
+  const keyFields = dim==='camp' ? ['camp'] : dim==='adset' ? ['camp','adset'] : ['camp','adset','ad'];
+  const entities={};
   fM.forEach(r=>{
     const st=r[statusField];
     if(st==null) return;
-    const k=r[dim];
-    const prev=latest[k];
-    if(!prev || (r.d||'')>=(prev.d||'')) latest[k]={d:r.d, v:st};
+    const ek=keyFields.map(f=>r[f]).join('');
+    const prev=entities[ek];
+    if(!prev || (r.d||'')>=(prev.d||'')) entities[ek]={d:r.d, v:st, label:r[dim]};
   });
   const out={};
-  Object.keys(latest).forEach(k=>out[k]=latest[k].v);
+  Object.values(entities).forEach(e=>{
+    out[e.label] = (out[e.label]===undefined) ? e.v : (out[e.label] || e.v);
+  });
   return out;
 }
 /* Cada dimensão (campanha/conjunto/anúncio) tem seu próprio conjunto de seleção,

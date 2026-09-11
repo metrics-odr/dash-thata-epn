@@ -160,6 +160,22 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   seleção de campanha das tabelas. Nunca volte a agregar/achatar esse status por
   nome sozinho no `build.py` — teste sempre com pelo menos 2 campanhas
   reaproveitando o mesmo nome de anúncio antes de mexer nisso de novo.
+  **2º bug real corrigido** (mesma causa raiz, outra manifestação): a correção
+  acima resolve o "mais recente por nome" sozinho, mas quando NENHUM filtro de
+  campanha/conjunto está ativo, `fM` inclui linhas de TODAS as campanhas — e
+  `latestStatusByDim()` ainda comparava a data mais recente por NOME sozinho
+  entre elas, então um "AD03" pausado (com data mais recente) em outra
+  campanha "vazava" pausado pro "AD03" ativo da campanha que o usuário estava
+  olhando, mesmo sem filtro nenhum selecionado. Corrigido calculando o "mais
+  recente" por ENTIDADE FÍSICA (chave = campanha+conjunto+anúncio, nunca só o
+  nome) e só DEPOIS combinando por nome de exibição com regra **OU**: sem
+  filtro, ativo em QUALQUER campanha que reaproveite aquele nome já basta pra
+  mostrar ATIVO; filtrando pra uma campanha específica, só a entidade daquela
+  campanha sobra no escopo e o indicativo reflete o status real dela (mesma
+  regra de sempre pegar a linha mais recente, com filtro de data ignorado).
+  Teste sempre os dois cenários (sem filtro E filtrando a campanha onde o
+  anúncio reaproveitado está pausado) antes de mexer em `latestStatusByDim()`
+  de novo.
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
