@@ -450,14 +450,26 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             # (todo o resto do funil, Gasto do Meta incluso, é nativo em
             # dólar por baixo; ver REVENUE_BRL_ALIASES/fetch_usd_brl_rate acima).
             val = to_float(val_brl_raw) / fx_rate
+            # Guarda também o valor EXATO em reais (sem passar pela cotação)
+            # pra exibição em modo BRL no navegador: converter BRL->USD no build
+            # (cotação do momento do build) e depois USD->BRL de novo na tela
+            # (cotação do momento em que o visitante abriu a página, cacheada
+            # até 6h) faz um round-trip com DUAS cotações diferentes — o total
+            # exibido nunca bate exatamente com a soma de "Faturamento Fixo" da
+            # planilha. Guardando o valor original em reais, o navegador usa
+            # ele direto (sem reconverter) sempre que a moeda selecionada for
+            # BRL, batendo 1:1 com a planilha.
+            val_brl_exact = to_float(val_brl_raw)
         else:
             val = to_float(cell(row, sidx["val"]))
+            val_brl_exact = None
         raw_rows.append({
             "d": parse_date(cell(row, sidx["created"])),
             "prod": prod, "main": main, "upsell": upsell,
             "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit,
             "email_n": norm(cell(row, sidx["email"])),
             "val": val,
+            "val_brl_exact": val_brl_exact,
             "nm": first_last_initial(cell(row, sidx["name"])),
             "em": mask_email(cell(row, sidx["email"])),
         })
@@ -494,6 +506,12 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "camp": camp, "adset": adset, "ad": ad_out,
             "prod": prod_out,
             "val": round(val, 2),
+            # Valor original EM REAIS (sem round-trip de cotação) quando a venda
+            # veio de REVENUE_BRL_ALIASES ("Faturamento Fixo") — usado pelo
+            # navegador pra exibir o Faturamento/Ticket em BRL batendo 1:1 com a
+            # planilha, em vez de reconverter "val" (USD) por uma cotação diferente
+            # da usada aqui no build. None quando a venda usou o fallback em USD.
+            "val_brl": round(r["val_brl_exact"], 2) if r["val_brl_exact"] is not None else None,
             # Vendas/CAC/ConvCHK/Ticket são só do produto principal — upsell/downsell
             # entram no Faturamento/ROAS (val acima) mas não em "main".
             "main": 1 if r["main"] else 0,

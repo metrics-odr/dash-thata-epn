@@ -127,6 +127,24 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   Faturamento/Ticket/ROAS. `Faturamento Fixo` é a correção definitiva desse problema
   (o cliente já preenche o valor certo na planilha); se ela algum dia vier vazia/quebrada
   em massa, revisar antes de mexer de novo no fallback.
+  **2º bug real corrigido** (outra causa, mesmo sintoma "não bate com a planilha"):
+  mesmo com `Faturamento Fixo` correto, `build/build.py` convertia BRL→USD com a
+  cotação do MOMENTO DO BUILD (roda a cada ~30 min) e `build/app.js` reconvertia
+  USD→BRL na tela com a cotação do MOMENTO EM QUE O VISITANTE ABRIU A PÁGINA
+  (cacheada até 6h em `localStorage`) — um round-trip com duas cotações diferentes,
+  então o Faturamento/Ticket exibidos em BRL nunca batiam exatamente com a soma de
+  `Faturamento Fixo` da planilha (a diferença cresce com a defasagem entre as duas
+  cotações). Corrigido guardando também o valor ORIGINAL em reais por venda
+  (`val_brl` no JSON de saída, ver `sales.append` em `build/build.py`) e usando
+  esse valor direto — sem reconverter — sempre que a moeda selecionada é BRL
+  (`brlEx()`/`brlNum()` em `build/app.js`, usados no Faturamento/Ticket/ROAS de
+  todas as abas — cards, tabelas, "Vendas por produto" e o Top 5/Piores 5 de
+  anúncios). Só cai de volta na conversão pela cotação ao vivo para vendas sem
+  `Faturamento Fixo` preenchido (fallback em `Fat. líquido (USD)`, sem valor exato
+  em reais pra usar). Modo USD nunca foi afetado (não passa por conversão nenhuma
+  na tela). Teste sempre comparando o Faturamento total do dashboard (moeda BRL)
+  contra a soma de `Faturamento Fixo` da planilha no mesmo período antes de mexer
+  de novo nessa lógica.
 - **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
   `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`. **Pedido explícito do
   cliente**: contar como venda paga **somente** `Status = "Aprovado"` —
