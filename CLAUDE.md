@@ -120,7 +120,14 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   fallback para uma coluna bruta/BRL — se ela algum dia vier quebrada, revisar de novo
   antes de reintroduzir qualquer fallback (tem que ser uma coluna também em USD).
 - **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
-  `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`.
+  `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`. **Pedido explícito do
+  cliente**: contar como venda paga **somente** `Status = "Aprovado"` —
+  `Completo` e demais valores da coluna **não** contam mais (deixaram de ser
+  aceitos como confirmação de pagamento para este funil). Implementado via
+  `PAID_STATUS_KEYWORDS = ("aprov",)` em `build/config.py`, que sobrescreve o
+  default genérico de `is_paid()` em `build/build.py` (esse default segue
+  aceitando `pag`/`aprov`/`paid`/`conclu`/`complet`/`ativ` para clientes que
+  não definirem `PAID_STATUS_KEYWORDS`).
 - **Sem colunas UTM separadas** (não há `utm_campaign`/`utm_medium`/`utm_content`
   próprias) — só o campo único **`Detalhe UTM`**, com os 4 parâmetros concatenados
   por `|` (ex.: `AUTO | ALL | Aberto Adv|EPN | E4-VEN | P1-FRIO | CBO | 2026-08-30 |
