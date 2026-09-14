@@ -68,6 +68,18 @@ UPSELL_SPLIT_VALUE = 0.0     # valor (USD) que separa upsell de downsell: venda 
 UPSELL_USL_LABEL = ""        # ex.: "Nome do Upsell (USL)" — rótulo de exibição da oferta mais cara
 UPSELL_DSL_LABEL = ""        # ex.: "Nome do Upsell (DSL)" — rótulo de exibição da oferta mais barata
 
+# Coluna de faturamento alternativa, EM REAIS (OPCIONAL) — deixe a lista vazia
+# na maioria dos clientes. Use só quando a planilha do cliente tiver uma
+# coluna própria de correção manual do faturamento (ex.: "Faturamento Fixo")
+# que substitua a coluna de faturamento líquido em dólar padrão. Como todo o
+# cálculo interno do dashboard (CAC, ROAS, Ticket) é feito em USD por baixo —
+# só o brl() em app.js converte pra exibir —, o build converte essa coluna de
+# REAIS pra dólar na hora de ler a planilha, usando a cotação USD/BRL buscada
+# automaticamente a cada build (mesmas APIs do navegador: frankfurter.app,
+# fallback open.er-api.com); se as duas falharem, usa FX_RATE_FALLBACK abaixo.
+REVENUE_BRL_ALIASES = []     # ex.: ["faturamento fixo"] — nome da coluna (minúsculo, sem acento)
+FX_RATE_FALLBACK = 5.40      # cotação fixa (USD->BRL) usada só se a busca ao vivo falhar
+
 # ==========================================================================
 # 3) RÓTULOS EXIBIDOS NA INTERFACE
 # ==========================================================================

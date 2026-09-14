@@ -69,6 +69,15 @@ UPSELL_PRODUCT_PREFIX = getattr(cfg, "UPSELL_PRODUCT_PREFIX", "") or ""
 UPSELL_SPLIT_VALUE = getattr(cfg, "UPSELL_SPLIT_VALUE", 0.0) or 0.0
 UPSELL_USL_LABEL = getattr(cfg, "UPSELL_USL_LABEL", "") or "Upsell"
 UPSELL_DSL_LABEL = getattr(cfg, "UPSELL_DSL_LABEL", "") or "Downsell"
+# Coluna de faturamento alternativa, EM REAIS (correção manual do cliente sobre
+# uma coluna de faturamento quebrada) — opcional. Quando configurada, tem
+# prioridade sobre a coluna "val" (dólar) padrão, mas como todo o cálculo
+# interno (CAC, ROAS, Ticket) é feito em USD por baixo (só o brl() em app.js
+# converte pra exibir — ver CLAUDE.md "Toggle de moeda"), o valor lido dessa
+# coluna é convertido BRL->USD pela cotação buscada em fetch_usd_brl_rate()
+# antes de entrar em "val". Sem client configurando isso, nada muda.
+REVENUE_BRL_ALIASES = getattr(cfg, "REVENUE_BRL_ALIASES", None) or []
+FX_RATE_FALLBACK = getattr(cfg, "FX_RATE_FALLBACK", None) or 5.40
 
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 BRT = timezone(timedelta(hours=-3))   # horário de Brasília (exibição)
@@ -91,6 +100,33 @@ def read_csv_file(path: str) -> list[list[str]]:
 
 def load_rows(url: str, local: str | None) -> list[list[str]]:
     return read_csv_file(local) if local else fetch_csv(url)
+
+
+def fetch_usd_brl_rate(fallback: float) -> tuple[float, bool]:
+    """Cotação USD->BRL para converter uma coluna de faturamento em REAIS de
+    volta pra dólar no build (ver REVENUE_BRL_ALIASES acima). Mesmas APIs (e
+    mesma ordem) do fetchFxRate() do navegador em build/app.js — só que aqui
+    roda 1x por build (o runner do GitHub Actions tem internet livre; o
+    navegador não recalcula essa conversão, ela já vem pronta no JSON).
+    Retorna (rate, is_live) — is_live=False quando caiu no fallback fixo de
+    config.py (FX_RATE_FALLBACK), útil pra sinalizar no JSON de saída."""
+    for url, path in (
+        ("https://api.frankfurter.app/latest?from=USD&to=BRL", ("rates", "BRL")),
+        ("https://open.er-api.com/v6/latest/USD", ("rates", "BRL")),
+    ):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "dash-vsl-bot/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                obj = json.loads(resp.read().decode("utf-8", errors="replace"))
+            rate = obj
+            for k in path:
+                rate = rate.get(k) if isinstance(rate, dict) else None
+            rate = float(rate)
+            if rate > 0:
+                return rate, True
+        except Exception:
+            continue
+    return float(fallback), False
 
 
 # --------------------------------------------------------------------------- #
@@ -232,7 +268,7 @@ def split_utm_detail(raw: str) -> tuple[str, str, str, str]:
 # --------------------------------------------------------------------------- #
 # Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
-def process(meta_rows, sales_rows):
+def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_live: bool = False):
     # ---------------- Aba META ADS ----------------
     # Colunas reais: Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent ·
     #   Impressions · Link Clicks · Landing Page Views · Checkouts Initiated · ...
@@ -355,6 +391,12 @@ def process(meta_rows, sales_rows):
          "val": ["fat. liquido (usd)", "faturamento liquido (usd)",
                  "faturamento liquido", "faturamento",
                  "valor da venda", "valor", "value", "amount"],
+         # Coluna alternativa de faturamento EM REAIS (opcional, ver
+         # REVENUE_BRL_ALIASES em config.py) — correção manual do cliente
+         # sobre a coluna de faturamento quebrada. Quando presente, tem
+         # prioridade sobre "val" acima, mas precisa ser convertida BRL->USD
+         # (feito abaixo, com fx_rate) antes de virar o "val" de cada venda.
+         "val_brl": REVENUE_BRL_ALIASES,
          "utm_content": ["utm content", "utm_content"],
          "utm_campaign": ["utm campaign", "utm_campaign"],
          "utm_medium": ["utm medium", "utm_medium"],
@@ -402,12 +444,20 @@ def process(meta_rows, sales_rows):
         # entre campanhas; casar só pelo anúncio atribui a venda à campanha errada).
         meta_key = (norm(sale_camp), norm(ad))
         meta_hit = ad_map.get(meta_key)
+        val_brl_raw = cell(row, sidx["val_brl"]) if sidx.get("val_brl") is not None else ""
+        if val_brl_raw:
+            # Coluna de correção do cliente vem em REAIS -> converte pra USD
+            # (todo o resto do funil, Gasto do Meta incluso, é nativo em
+            # dólar por baixo; ver REVENUE_BRL_ALIASES/fetch_usd_brl_rate acima).
+            val = to_float(val_brl_raw) / fx_rate
+        else:
+            val = to_float(cell(row, sidx["val"]))
         raw_rows.append({
             "d": parse_date(cell(row, sidx["created"])),
             "prod": prod, "main": main, "upsell": upsell,
             "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit,
             "email_n": norm(cell(row, sidx["email"])),
-            "val": to_float(cell(row, sidx["val"])),
+            "val": val,
             "nm": first_last_initial(cell(row, sidx["name"])),
             "em": mask_email(cell(row, sidx["email"])),
         })
@@ -474,6 +524,12 @@ def process(meta_rows, sales_rows):
             "roas_target": ROAS_TARGET,
             "report_band_low": REPORT_BAND_LOW,
             "report_band_high": REPORT_BAND_HIGH,
+            # Cotação USD/BRL usada no build para converter a coluna de
+            # faturamento em reais (REVENUE_BRL_ALIASES) de volta pra dólar —
+            # só informativo (auditoria); não usado no navegador. is_live=False
+            # quando a busca falhou e caiu no fallback fixo de config.py.
+            "fx_rate_build": fx_rate,
+            "fx_rate_build_is_live": fx_rate_live,
         },
         "meta": meta,
         "sales": sales,
@@ -539,7 +595,17 @@ def main():
 
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
-    data = process(meta_rows, sales_rows)
+
+    # Só busca cotação (rede externa) se o cliente configurou uma coluna de
+    # faturamento em reais (ver REVENUE_BRL_ALIASES) — clientes sem isso não
+    # precisam da conversão e o build segue 100% offline como antes.
+    if REVENUE_BRL_ALIASES:
+        fx_rate, fx_rate_live = fetch_usd_brl_rate(FX_RATE_FALLBACK)
+        print(f"  cotacao : 1 USD = {fx_rate:.4f} BRL ({'ao vivo' if fx_rate_live else 'fallback fixo'})", file=sys.stderr)
+    else:
+        fx_rate, fx_rate_live = FX_RATE_FALLBACK, False
+
+    data = process(meta_rows, sales_rows, fx_rate, fx_rate_live)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do
     # arquivo versionado ao lado do template. Sem chamada de API no build.
