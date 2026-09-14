@@ -104,21 +104,29 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   derivadas (CPM/CTR) ficam zeradas/"--" (`header_index` não tem fallback posicional
   para `impr` quando o alias não é encontrado — ver `build/build.py`). Não é um bug,
   é a planilha real deste cliente.
-- **Coluna de receita**: `val` usa **`Fat. líquido (USD)`** (alias `faturamento liquido
-  (usd)`, prioridade sobre `valor`) — é a receita líquida **em dólar**, já com taxas de
-  gateway descontadas. Isso é obrigatório porque todo o resto do funil (Gasto do Meta
-  Ads e todo cálculo interno — CAC, ROAS, Ticket) é nativo em USD; só o `brl()` em
-  `build/app.js` converte pela cotação ao **formatar** para exibição (ver "Toggle de
-  moeda" acima). **Bug real corrigido neste cliente**: uma versão anterior deste build
-  usava `Fat. líquido (BRL)` (com fallback para `Valor bruto (BRL)`) — essa coluna vem
-  com **`#REF!`** em parte das vendas do produto principal (erro de fórmula na planilha
-  do cliente) e, pior, mesmo quando preenchida é um valor em **reais** sendo tratado
-  como se fosse USD por baixo — daí multiplicado de novo pela cotação ao exibir em BRL
-  (double-conversion, ~5x inflado) e mostrado com o símbolo errado ("US$") em modo USD.
-  Isso inflava Faturamento/Ticket/ROAS. A coluna `Fat. líquido (USD)` deste cliente não
-  apresenta o problema de `#REF!` (confirmado na planilha real), então não há mais
-  fallback para uma coluna bruta/BRL — se ela algum dia vier quebrada, revisar de novo
-  antes de reintroduzir qualquer fallback (tem que ser uma coluna também em USD).
+- **Coluna de receita**: `val` usa a coluna **`Faturamento Fixo`** (`REVENUE_BRL_ALIASES =
+  ["faturamento fixo"]` em `build/config.py`) — uma correção manual do cliente sobre o
+  faturamento, preenchida **em reais**. Como todo o resto do funil (Gasto do Meta Ads e
+  todo cálculo interno — CAC, ROAS, Ticket) é nativo em **USD** por baixo (só o `brl()`
+  em `build/app.js` converte pela cotação ao **formatar** para exibição — ver "Toggle de
+  moeda" acima), `build/build.py` converte `Faturamento Fixo` (BRL) para USD antes de
+  usar como `val`, dividindo pela cotação USD/BRL buscada automaticamente a cada build
+  (`fetch_usd_brl_rate()` — mesmas APIs do navegador: `api.frankfurter.app`, fallback
+  `open.er-api.com`; se as duas falharem, usa `FX_RATE_FALLBACK` fixo de `config.py`,
+  hoje `5.40`). A cotação usada em cada build fica salva em `build.fx_rate_build`/
+  `build.fx_rate_build_is_live` no JSON de saída, só para auditoria. Quando uma venda
+  não tem `Faturamento Fixo` preenchido, cai no comportamento antigo — coluna **`Fat.
+  líquido (USD)`** (alias `faturamento liquido (usd)`), já nativa em dólar, sem
+  conversão. **Bug real corrigido neste cliente** (histórico, antes de existir
+  `Faturamento Fixo`): uma versão anterior deste build usava `Fat. líquido (BRL)` (com
+  fallback para `Valor bruto (BRL)`) — essa coluna vinha com **`#REF!`** em parte das
+  vendas do produto principal (erro de fórmula na planilha do cliente) e, pior, mesmo
+  quando preenchida era um valor em **reais** sendo tratado como se fosse USD por baixo
+  — daí multiplicado de novo pela cotação ao exibir em BRL (double-conversion, ~5x
+  inflado) e mostrado com o símbolo errado ("US$") em modo USD. Isso inflava
+  Faturamento/Ticket/ROAS. `Faturamento Fixo` é a correção definitiva desse problema
+  (o cliente já preenche o valor certo na planilha); se ela algum dia vier vazia/quebrada
+  em massa, revisar antes de mexer de novo no fallback.
 - **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
   `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`. **Pedido explícito do
   cliente**: contar como venda paga **somente** `Status = "Aprovado"` —

@@ -66,6 +66,17 @@ UPSELL_SPLIT_VALUE = 65.0                    # USD: venda >= 65 = USL (~90) · <
 UPSELL_USL_LABEL = "Case de Promoção (USL)"  # oferta inicial, mais cara
 UPSELL_DSL_LABEL = "Case de Promoção (DSL)"  # oferta de recusa, mais barata
 
+# Este cliente adicionou uma coluna própria de correção manual do faturamento
+# ("Faturamento Fixo", em REAIS) na aba Compradores, substituindo o uso da
+# coluna "Fat. líquido (USD)" (que tinha o bug do "Fat. líquido (BRL)" com
+# #REF! — ver CLAUDE.md "Fontes de dados"). Como todo cálculo interno do
+# dashboard (CAC, ROAS, Ticket) é feito em USD por baixo, o build converte
+# essa coluna de reais pra dólar usando a cotação USD/BRL buscada
+# automaticamente a cada build (frankfurter.app, fallback open.er-api.com;
+# se as duas falharem, usa FX_RATE_FALLBACK abaixo).
+REVENUE_BRL_ALIASES = ["faturamento fixo"]
+FX_RATE_FALLBACK = 5.40      # cotação fixa (USD->BRL) usada só se a busca ao vivo falhar
+
 # ==========================================================================
 # 3) RÓTULOS EXIBIDOS NA INTERFACE
 # ==========================================================================
