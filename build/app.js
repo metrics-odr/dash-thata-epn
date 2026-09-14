@@ -24,6 +24,18 @@ const nf4=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFraction
 const brl=v=>{ if(v==null||!isFinite(v)) return '-';
   if(STATE.currency==='usd') return 'US$ '+nf2.format(v);
   return 'R$ '+nf2.format(v*(FX_RATE||FX_FALLBACK)); };
+/* Faturamento/Ticket/valor de venda: quando a venda tem um valor EXATO em reais
+   (val_brl, vindo de "Faturamento Fixo" — ver build.py), usar esse valor direto
+   em modo BRL em vez de reconverter o "val" em USD pela cotação ao vivo — evita
+   o round-trip BRL->USD (no build, cotação do build) ->BRL (na tela, cotação do
+   momento) que fazia o total nunca bater exatamente com a planilha. Em modo USD,
+   ou quando não há valor exato em reais p/ aquela venda, comporta-se como brl(). */
+const brlEx=(usd,brlExact)=>{ if(usd==null||!isFinite(usd)) return '-';
+  if(STATE.currency==='usd') return 'US$ '+nf2.format(usd);
+  return 'R$ '+nf2.format(brlExact!=null?brlExact:usd*(FX_RATE||FX_FALLBACK)); };
+/* Formata um número que já está na moeda de exibição atual (sem converter de
+   novo) — usado onde só dá pra passar um valor único (ex.: barras horizontais). */
+const brlNum=v=>(v==null||!isFinite(v))?'-':(STATE.currency==='usd'?'US$ ':'R$ ')+nf2.format(v);
 const pct=v=>(v==null||!isFinite(v))?'-':nf2.format(v*100)+'%';
 const intf=v=>(v==null||!isFinite(v))?'-':nf0.format(v);
 const numf=v=>(v==null||!isFinite(v))?'-':nf1.format(v);
@@ -104,11 +116,16 @@ const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
    vendasM = compras do produto principal atribuídas ao Meta Ads (base das conversões)
    fat     = faturamento (todos os produtos do escopo)
    Obs.: na aba Meta o conjunto de vendas já é filtrado a meta==1, então vendas==vendasM. */
-function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0};}
-function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat+=r.val; }
+function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0};}
+/* fat = faturamento em USD (sempre, base de ROAS/CAC — não muda com a cotação).
+   fatBRL = soma preferindo o valor EXATO em reais de cada venda (val_brl, quando
+   a venda veio de "Faturamento Fixo"); nas vendas sem valor exato (fallback em
+   USD), soma o "val" convertido pela cotação ao vivo. */
+function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat+=r.val;
+  a.fatBRL += (r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK)); }
 function derive(a){
   const g=a.sp*taxf();
-  return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat,
+  return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat, fatBRL:a.fatBRL,
     cpm:a.im?g/a.im*1000:null, ctr:a.im?a.cl/a.im:null, cpc:a.cl?g/a.cl:null,
     /* HR/BR/ER = taxas de retenção do vídeo (3s / 50% / 95%) sobre Impressões —
        exibidas só na tabela de Anúncios (ver AD_HCOLS abaixo). */
@@ -117,7 +134,8 @@ function derive(a){
     cpic:a.ck?g/a.ck:null, vischk:a.pv?a.ck/a.pv:null,
     convlp:a.pv?a.vendasM/a.pv:null,                            /* Vendas(Meta) / Page Views */
     convchk:a.ck?a.vendasM/a.ck:null,                           /* Vendas(Meta) / Checkouts */
-    cac:a.vendas?g/a.vendas:null, roas:g?a.fat/g:null, ticket:a.vendas?a.fat/a.vendas:null};
+    cac:a.vendas?g/a.vendas:null, roas:g?a.fat/g:null,
+    ticket:a.vendas?a.fat/a.vendas:null, ticketBRL:a.vendas?a.fatBRL/a.vendas:null};
 }
 function buildAgg(fS,fM,dim){
   const m={}; const get=k=>m[k]||(m[k]=newBucket());
@@ -156,7 +174,7 @@ function renderTable(cfg){
       return dir==='asc'?va-vb:vb-va; }); }
   const ext={};
   cfg.cols.forEach(c=>{ if(c.heat){ const vs=rows.map(r=>r.cells[c.key]).filter(v=>v!=null&&isFinite(v)); ext[c.key]=[Math.min(...vs),Math.max(...vs)]; }});
-  const fmt=(t,v)=> t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='roas'?roasf(v):t==='date'?brdate(v):dimf(v);
+  const fmt=(t,v,vex)=> t==='brlx'?brlEx(v,vex):t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='roas'?roasf(v):t==='date'?brdate(v):dimf(v);
   const widths=cfg.cols.map(c=>colWidth(cfg,c)); const totalW=widths.reduce((a,b)=>a+b,0);
   const colgroup='<colgroup>'+cfg.cols.map((c,i)=>`<col style="width:${widths[i]}px">`).join('')+'</colgroup>';
   let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
@@ -170,13 +188,14 @@ function renderTable(cfg){
       if(c.heat && ext[c.key]) bg=`background:${heat(v,ext[c.key][0],ext[c.key][1],c.heat)}`;
       const cls=(c.type==='dim'?'dim':'');
       const dot = (ci===0 && cfg.statusMap) ? statusDot(cfg.statusMap[r.k]) : '';
-      return `<td class="${cls}" style="${bg}">${dot}${fmt(c.type,v)}</td>`;
+      return `<td class="${cls}" style="${bg}">${dot}${fmt(c.type,v,r.cells[c.key+'_ex'])}</td>`;
     }).join('');
     return `<tr class="${sel?'sel':''}" data-k="${encodeURIComponent(r.k)}">${tds}</tr>`;
   }).join('')+'</tbody>';
   let tfoot='';
   if(cfg.total){ tfoot='<tfoot><tr>'+cfg.cols.map((c,i)=>{
-    const v=cfg.total[c.key]; return `<td class="${c.type==='dim'?'dim':''}">${i===0?(v==null?'Total Geral':fmt(c.type,v)):fmt(c.type,v)}</td>`;
+    const v=cfg.total[c.key], vex=cfg.total[c.key+'_ex'];
+    return `<td class="${c.type==='dim'?'dim':''}">${i===0?(v==null?'Total Geral':fmt(c.type,v,vex)):fmt(c.type,v,vex)}</td>`;
   }).join('')+'</tr></tfoot>'; }
   table.style.width=totalW+'px';
   table.innerHTML=colgroup+thead+tbody+tfoot;
@@ -326,8 +345,8 @@ const METRIC_COLS=[
   {key:'convchk',label:'ConvCHK',type:'pct'},
   {key:'vendas',label:'Vendas',type:'int',heat:'vendas'}, /* heatmap azul */
   {key:'cac',label:'CAC',type:'brl'},
-  {key:'fat',label:'Faturamento',type:'brl',heat:'fat'},  /* heatmap verde */
-  {key:'ticket',label:'Ticket',type:'brl'},
+  {key:'fat',label:'Faturamento',type:'brlx',heat:'fat'},  /* heatmap verde */
+  {key:'ticket',label:'Ticket',type:'brlx'},
   {key:'roas',label:'ROAS',type:'roas',heat:'roas'},      /* heatmap amarelo */
 ];
 const DAILY_COLS=[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:64}].concat(METRIC_COLS);
@@ -339,7 +358,7 @@ const AD_HCOLS=(()=>{ const cols=HCOLS.slice(); const i=cols.findIndex(c=>c.key=
   return cols; })();
 function metricCells(x,d){
   return {gasto:d.gasto, cpm:d.cpm, hr:d.hr, br:d.br, er:d.er, ctr:d.ctr, cr:d.cr, vischk:d.vischk, convchk:d.convchk,
-    vendas:x.vendas, cac:d.cac, fat:x.fat, ticket:d.ticket, roas:d.roas};
+    vendas:x.vendas, cac:d.cac, fat:x.fat, fat_ex:d.fatBRL, ticket:d.ticket, ticket_ex:d.ticketBRL, roas:d.roas};
 }
 function dailyCells(x,d,isTotal){
   return Object.assign({date:isTotal?null:x.d, wd:isTotal?'':weekday(x.d)}, metricCells(x,d));
@@ -397,7 +416,7 @@ function funnelSteps(t, tp){
     ['Page Views', intf(t.pv), [['CPV',brl(d.cpv)],['CR',pct(d.cr)]], 'pv', '--c4', deltaBadge(t.pv, P('pv'), 'pv')],
     ['Checkouts', intf(t.ck), [['CPIC',brl(d.cpic)],['VisCHK',pct(d.vischk)]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
     ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac'],['ConvCHK',pct(d.convchk)]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
-    ['Faturamento', brl(t.fat), [['ROAS',roasf(d.roas),'roas'],['Ticket Médio',brl(d.ticket)]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
+    ['Faturamento', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas'],['Ticket Médio',brlEx(d.ticket,d.ticketBRL)]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];
 }
 function convCharts(id1,id2,id3,dd){
@@ -509,7 +528,7 @@ function renderMeta(){
   convCharts('mCpmCtr','mCrVis','mConv', dd);
   comboChart('mCombo', dd);
   const aggAd=buildAgg(fS,fM,'ad');
-  hbar('mContent', Object.entries(aggAd).map(([label,a])=>({label,v:a.fat})), x=>x.v, cvar('--chart-faturamento'), 10, brl);
+  hbar('mContent', Object.entries(aggAd).map(([label,a])=>({label,v:STATE.currency==='usd'?a.fat:a.fatBRL})), x=>x.v, cvar('--chart-faturamento'), 10, brlNum);
   renderProdTable('mProd', fS);
 
   const dl=dd.slice().reverse();
@@ -546,8 +565,8 @@ function renderMeta(){
   const rows=fS.slice().sort((a,b)=>(a.d<b.d?1:-1));
   renderTable({id:'tQual',
     cols:[{key:'d',label:'Data',type:'date'},{key:'nm',label:'Nome',type:'dim'},{key:'prod',label:'Produto',type:'dim',big:true},
-      {key:'val',label:'Valor',type:'brl',w:110},{key:'camp',label:'Campanha',type:'dim',big:true},{key:'ad',label:'Anúncio',type:'dim',big:true},{key:'em',label:'E‑mail',type:'dim',w:200}],
-    rows:rows.map((s,i)=>({k:'s'+i, cells:{d:s.d,nm:s.nm,prod:s.prod,val:s.val,camp:s.camp,ad:s.ad,em:s.em}}))});
+      {key:'val',label:'Valor',type:'brlx',w:110},{key:'camp',label:'Campanha',type:'dim',big:true},{key:'ad',label:'Anúncio',type:'dim',big:true},{key:'em',label:'E‑mail',type:'dim',w:200}],
+    rows:rows.map((s,i)=>({k:'s'+i, cells:{d:s.d,nm:s.nm,prod:s.prod,val:s.val,val_ex:s.val_brl,camp:s.camp,ad:s.ad,em:s.em}}))});
 }
 
 /* ---------------- PAGE: Relatórios ----------------
@@ -662,9 +681,9 @@ function relCards(id,t){ const d=derive(t);
   document.getElementById(id).innerHTML=[
     relCard('Valor Gasto',brl(d.gasto)),
     relCard('Vendas',intf(t.vendas)),
-    relCard('Faturamento',brl(t.fat)),
+    relCard('Faturamento',brlEx(t.fat,t.fatBRL)),
     relCard('CAC',`<span class="${relColor(d.cac,'cac')}">${brl(d.cac)}</span>`),
-    relCard('Ticket Médio',brl(d.ticket)),
+    relCard('Ticket Médio',brlEx(d.ticket,d.ticketBRL)),
     relCard('ROAS',`<span class="${relColor(d.roas,'roas')}">${roasf(d.roas)}</span>`,true),
   ].join('');
 }
