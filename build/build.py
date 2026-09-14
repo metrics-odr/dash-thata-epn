@@ -143,12 +143,19 @@ def is_test_row(rowtext: str) -> bool:
     return "<test lead" in rowtext.lower()
 
 
+PAID_STATUS_KEYWORDS = getattr(
+    cfg, "PAID_STATUS_KEYWORDS", ("pag", "aprov", "paid", "conclu", "complet", "ativ")
+)
+
+
 def is_paid(status: str) -> bool:
-    """Considera venda apenas status pago/aprovado. Sem coluna Status -> conta."""
+    """Considera venda apenas status pago/aprovado. Sem coluna Status -> conta.
+    Keywords customizáveis por cliente via PAID_STATUS_KEYWORDS em config.py
+    (default genérico acima, usado quando o cliente não sobrescreve)."""
     sn = norm(status)
     if not sn:
         return True
-    return any(k in sn for k in ("pag", "aprov", "paid", "conclu", "complet", "ativ"))
+    return any(k in sn for k in PAID_STATUS_KEYWORDS)
 
 
 def is_active_status(status: str) -> bool:
