@@ -351,13 +351,16 @@ const METRIC_COLS=[
 ];
 const DAILY_COLS=[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:64}].concat(METRIC_COLS);
 const HCOLS=[{key:'dim',label:'',type:'dim',big:true}].concat(METRIC_COLS);
-/* Só a tabela de Anúncios ganha HR/BR/ER (retenção de vídeo), entre CPM e CTR —
+/* Só a tabela de Anúncios ganha HR/BR/ER (retenção de vídeo), entre CPM e CTR,
+   e CPV (custo de Page View), entre CR e VisCHK —
    Campanhas/Conjuntos/Diária seguem só com METRIC_COLS. */
 const AD_HCOLS=(()=>{ const cols=HCOLS.slice(); const i=cols.findIndex(c=>c.key==='ctr');
   cols.splice(i,0,{key:'hr',label:'HR',type:'pct'},{key:'br',label:'BR',type:'pct'},{key:'er',label:'ER',type:'pct'});
+  const j=cols.findIndex(c=>c.key==='vischk');
+  cols.splice(j,0,{key:'cpv',label:'CPV',type:'brl'});
   return cols; })();
 function metricCells(x,d){
-  return {gasto:d.gasto, cpm:d.cpm, hr:d.hr, br:d.br, er:d.er, ctr:d.ctr, cr:d.cr, vischk:d.vischk, convchk:d.convchk,
+  return {gasto:d.gasto, cpm:d.cpm, hr:d.hr, br:d.br, er:d.er, ctr:d.ctr, cr:d.cr, cpv:d.cpv, vischk:d.vischk, convchk:d.convchk,
     vendas:x.vendas, cac:d.cac, fat:x.fat, fat_ex:d.fatBRL, ticket:d.ticket, ticket_ex:d.ticketBRL, roas:d.roas};
 }
 function dailyCells(x,d,isTotal){
