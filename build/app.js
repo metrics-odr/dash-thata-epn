@@ -542,18 +542,28 @@ function renderMeta(){
     onSelect:(k,e)=>{ toggleSet(STATE.selDays,k,e&&(e.ctrlKey||e.metaKey)); syncDateInputs(); renderAll(); },
   });
 
-  function hierRows(map,searchKey){ let rows=Object.entries(map).map(([k,a])=>{const dv=derive(a);
-      return {k, cells:Object.assign({dim:k}, metricCells(a,dv))};});
+  /* filtra o mapa agregado pela busca da própria tabela ANTES de montar linhas
+     e total — assim o "Total Geral" reflete só as linhas visíveis (filtradas),
+     não o escopo inteiro da dimensão (bug: buscar "Repes" mostrava 1 linha mas
+     o total continuava somando todas as campanhas do período). */
+  function sumBuckets(list){ const s=newBucket(); list.forEach(a=>{ for(const k in s) s[k]+=a[k]||0; }); return s; }
+  function hierRows(map,searchKey){
     const q=norm(STATE.search[searchKey]);
-    if(q) rows=rows.filter(r=>norm(r.cells.dim).includes(q));
-    return rows; }
+    let entries=Object.entries(map);
+    if(q) entries=entries.filter(([k])=>norm(k).includes(q));
+    const rows=entries.map(([k,a])=>{const dv=derive(a); return {k, cells:Object.assign({dim:k}, metricCells(a,dv))};});
+    return {rows, total:sumBuckets(entries.map(([,a])=>a))};
+  }
   function totRowOf(tt){const dv=derive(tt);return Object.assign({dim:null}, metricCells(tt,dv));}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
-  renderTable({id:'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fS,Sc.fM,'camp'),'tCamp'), total:totRowOf(totals(Sc.fS,Sc.fM)),
+  const hrCamp=hierRows(buildAgg(Sc.fS,Sc.fM,'camp'),'tCamp');
+  const hrAdset=hierRows(buildAgg(Sa.fS,Sa.fM,'adset'),'tAdset');
+  const hrAd=hierRows(buildAgg(Sd.fS,Sd.fM,'ad'),'tAd');
+  renderTable({id:'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hrCamp.rows, total:totRowOf(hrCamp.total),
     statusMap:latestStatusByDim(metaScopeAllDates('C'),'camp','cs'), selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fS,Sa.fM,'adset'),'tAdset'), total:totRowOf(totals(Sa.fS,Sa.fM)),
+  renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hrAdset.rows, total:totRowOf(hrAdset.total),
     statusMap:latestStatusByDim(metaScopeAllDates('A'),'adset','as'), selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fS,Sd.fM,'ad'),'tAd'), total:totRowOf(totals(Sd.fS,Sd.fM)),
+  renderTable({id:'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hrAd.rows, total:totRowOf(hrAd.total),
     statusMap:latestStatusByDim(metaScopeAllDates('D'),'ad','ds'), selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
@@ -889,10 +899,15 @@ document.getElementById('periodPop').addEventListener('click',e=>e.stopPropagati
 document.addEventListener('click',()=>{ if(ppIsOpen()) ppClose(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ppIsOpen()) ppClose(); });
 document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
-/* botões ✕ Filtro de cada tabela (Campanhas/Conjuntos/Anúncios): limpam só a própria dimensão */
-document.getElementById('clearCampBtn').addEventListener('click',()=>{ STATE.mSelC.clear(); renderMeta(); });
-document.getElementById('clearAdsetBtn').addEventListener('click',()=>{ STATE.mSelA.clear(); renderMeta(); });
-document.getElementById('clearAdBtn').addEventListener('click',()=>{ STATE.mSelAd.clear(); renderMeta(); });
+/* botões ✕ Filtro de cada tabela (Campanhas/Conjuntos/Anúncios): limpam a seleção
+   E a busca por texto daquela tabela (e o próprio campo de input), sem afetar
+   as outras tabelas nem o período selecionado. */
+function clearTableFilter(selSet,searchKey,inputId){
+  selSet.clear(); STATE.search[searchKey]=''; document.getElementById(inputId).value=''; renderMeta();
+}
+document.getElementById('clearCampBtn').addEventListener('click',()=>clearTableFilter(STATE.mSelC,'tCamp','searchCamp'));
+document.getElementById('clearAdsetBtn').addEventListener('click',()=>clearTableFilter(STATE.mSelA,'tAdset','searchAdset'));
+document.getElementById('clearAdBtn').addEventListener('click',()=>clearTableFilter(STATE.mSelAd,'tAd','searchAd'));
 /* busca por nome (campanha/conjunto/anúncio) — case/acento-insensitive, filtra as
    linhas da própria tabela sem mexer nas outras nem no período selecionado */
 [['searchCamp','tCamp'],['searchAdset','tAdset'],['searchAd','tAd']].forEach(([inputId,key])=>{
