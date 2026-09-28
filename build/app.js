@@ -4,6 +4,12 @@ const META = DATA.meta, SALES = DATA.sales, B = DATA.build;
 const TAX = B.tax_factor || 1;
 const MAIN_PRODUCT = B.main_product || 'Produto principal';
 const MAIN_PREFIX = B.main_product_prefix || '';
+/* rótulos de exibição do upsell (USL, oferta cara) e downsell (DSL, oferta
+   barata) pós-compra — ver UPSELL_USL_LABEL/UPSELL_DSL_LABEL em build/config.py.
+   sale.prod vem com esse texto exato pras vendas de upsell/downsell (ver
+   build/build.py), então basta comparar direto — sem prefixo/norm(). */
+const USL_LABEL = B.upsell_usl_label || '';
+const DSL_LABEL = B.upsell_dsl_label || '';
 /* status ATIVO/PAUSADO por campanha/conjunto/anúncio — só p/ o indicativo
    visual nas tabelas de otimização (Meta Ads); não afeta cálculo/filtro
    nenhum. Resolvido em latestStatusByDim() (mais abaixo): usa SEMPRE a linha
@@ -116,13 +122,19 @@ const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
    vendasM = compras do produto principal atribuídas ao Meta Ads (base das conversões)
    fat     = faturamento (todos os produtos do escopo)
    Obs.: na aba Meta o conjunto de vendas já é filtrado a meta==1, então vendas==vendasM. */
-function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0};}
+function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0};}
 /* fat = faturamento em USD (sempre, base de ROAS/CAC — não muda com a cotação).
    fatBRL = soma preferindo o valor EXATO em reais de cada venda (val_brl, quando
    a venda veio de "Faturamento Fixo"); nas vendas sem valor exato (fallback em
-   USD), soma o "val" convertido pela cotação ao vivo. */
+   USD), soma o "val" convertido pela cotação ao vivo.
+   usl/dsl = contagem de vendas do upsell (oferta cara) e downsell (oferta barata)
+   pós-compra — identificadas pelo rótulo exato em sale.prod (ver USL_LABEL/
+   DSL_LABEL acima); já somam em "fat" acima (fazem parte do Faturamento) mas
+   nunca em "vendas"/"vendasM" (só produto principal). */
 function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat+=r.val;
-  a.fatBRL += (r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK)); }
+  a.fatBRL += (r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK));
+  if(USL_LABEL && r.prod===USL_LABEL) a.usl+=1;
+  else if(DSL_LABEL && r.prod===DSL_LABEL) a.dsl+=1; }
 function derive(a){
   const g=a.sp*taxf();
   return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat, fatBRL:a.fatBRL,
@@ -135,7 +147,10 @@ function derive(a){
     convlp:a.pv?a.vendasM/a.pv:null,                            /* Vendas(Meta) / Page Views */
     convchk:a.ck?a.vendasM/a.ck:null,                           /* Vendas(Meta) / Checkouts */
     cac:a.vendas?g/a.vendas:null, roas:g?a.fat/g:null,
-    ticket:a.vendas?a.fat/a.vendas:null, ticketBRL:a.vendas?a.fatBRL/a.vendas:null};
+    ticket:a.vendas?a.fat/a.vendas:null, ticketBRL:a.vendas?a.fatBRL/a.vendas:null,
+    /* USL/DSL: taxa de aceite sobre quem comprou o produto principal
+       (é a base de quem recebeu a oferta pós-compra). */
+    usl:a.usl, dsl:a.dsl, convUsl:a.vendas?a.usl/a.vendas:null, convDsl:a.vendas?a.dsl/a.vendas:null};
 }
 function buildAgg(fS,fM,dim){
   const m={}; const get=k=>m[k]||(m[k]=newBucket());
@@ -345,6 +360,10 @@ const METRIC_COLS=[
   {key:'convchk',label:'ConvCHK',type:'pct'},
   {key:'vendas',label:'Vendas',type:'int',heat:'vendas'}, /* heatmap azul */
   {key:'cac',label:'CAC',type:'brl'},
+  {key:'usl',label:'Vendas USL',type:'int'},
+  {key:'convUsl',label:'ConvUSL',type:'pct'},
+  {key:'dsl',label:'Vendas DSL',type:'int'},
+  {key:'convDsl',label:'ConvDSL',type:'pct'},
   {key:'fat',label:'Faturamento',type:'brlx',heat:'fat'},  /* heatmap verde */
   {key:'ticket',label:'Ticket',type:'brlx'},
   {key:'roas',label:'ROAS',type:'roas',heat:'roas'},      /* heatmap amarelo */
@@ -361,7 +380,8 @@ const AD_HCOLS=(()=>{ const cols=HCOLS.slice(); const i=cols.findIndex(c=>c.key=
   return cols; })();
 function metricCells(x,d){
   return {gasto:d.gasto, cpm:d.cpm, hr:d.hr, br:d.br, er:d.er, ctr:d.ctr, cr:d.cr, cpv:d.cpv, vischk:d.vischk, convchk:d.convchk,
-    vendas:x.vendas, cac:d.cac, fat:x.fat, fat_ex:d.fatBRL, ticket:d.ticket, ticket_ex:d.ticketBRL, roas:d.roas};
+    vendas:x.vendas, cac:d.cac, usl:x.usl, convUsl:d.convUsl, dsl:x.dsl, convDsl:d.convDsl,
+    fat:x.fat, fat_ex:d.fatBRL, ticket:d.ticket, ticket_ex:d.ticketBRL, roas:d.roas};
 }
 function dailyCells(x,d,isTotal){
   return Object.assign({date:isTotal?null:x.d, wd:isTotal?'':weekday(x.d)}, metricCells(x,d));
@@ -419,6 +439,7 @@ function funnelSteps(t, tp){
     ['Page Views', intf(t.pv), [['CPV',brl(d.cpv)],['CR',pct(d.cr)]], 'pv', '--c4', deltaBadge(t.pv, P('pv'), 'pv')],
     ['Checkouts', intf(t.ck), [['CPIC',brl(d.cpic)],['VisCHK',pct(d.vischk)]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
     ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac'],['ConvCHK',pct(d.convchk)]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
+    ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl)],['ConvDSL',pct(d.convDsl)]], 'usldsl', '--c5'],
     ['Faturamento', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas'],['Ticket Médio',brlEx(d.ticket,d.ticketBRL)]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];
 }

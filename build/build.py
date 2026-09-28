@@ -536,6 +536,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "tax_label": TAX_LABEL,
             "main_product": MAIN_PRODUCT,
             "main_product_prefix": MAIN_PRODUCT_PREFIX,
+            "upsell_usl_label": UPSELL_USL_LABEL,
+            "upsell_dsl_label": UPSELL_DSL_LABEL,
             "ia_worker_url": IA_WORKER_URL,
             # Metas da aba Relatórios (código de cor de CAC/ROAS)
             "cac_target": CAC_TARGET,
