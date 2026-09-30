@@ -329,9 +329,16 @@ function hbar(id, items, valFn, color, top, fmtFn){
       scales:{x:{beginAtZero:true,ticks:{color:mut,font:{size:9}},grid:{color:cgrid()}},
               y:{ticks:{color:mut,font:{size:9}},grid:{display:false}}}}});
 }
-/* CAC por dia, por item de uma dimensão (campanha/conjunto/anúncio) - 1 linha por item.
-   `dim` = 'camp' | 'adset' | 'ad'; usa os mesmos dados escopados da tabela acima. */
-function cacDimChart(id, fM, fS, dim, selSet){
+/* Métrica por dia, por item de uma dimensão (campanha/conjunto/anúncio) - 1 linha por item.
+   `dim` = 'camp' | 'adset' | 'ad'; usa os mesmos dados escopados da tabela acima.
+   Métrica escolhida pelos botões CAC / ROAS / TM (Ticket Médio) acima do gráfico. */
+const CHART_METRIC={}, CHART_ARGS={};
+function dimChart(id, fM, fS, dim, selSet){
+  CHART_ARGS[id]=[id,fM,fS,dim,selSet];
+  const metric=CHART_METRIC[id]||'cac';
+  document.querySelectorAll('.metric-btns[data-chart="'+id+'"] button').forEach(b=>b.classList.toggle('on',b.dataset.m===metric));
+  const title=document.querySelector('.pc-title[data-chart="'+id+'"] .pc-name');
+  if(title) title.textContent=({cac:'CAC',roas:'ROAS',tm:'Ticket médio'})[metric]+' por '+({camp:'campanha',adset:'conjunto',ad:'anúncio'})[dim]+', por dia';
   destroy(id); const el=document.getElementById(id); if(!el) return;
   const spendTot={}; fM.forEach(r=>spendTot[r[dim]]=(spendTot[r[dim]]||0)+r.sp);
   const items=(selSet&&selSet.size)
@@ -339,20 +346,32 @@ function cacDimChart(id, fM, fS, dim, selSet){
     : Object.keys(spendTot).sort((a,b)=>spendTot[b]-spendTot[a]).slice(0,6);
   const dset=new Set(); fM.forEach(r=>r.d&&dset.add(r.d)); fS.forEach(r=>r.d&&dset.add(r.d));
   const days=[...dset].sort();
-  const K=(c,dd)=>c+'\u0001'+dd, sp={}, vd={};
+  const K=(c,dd)=>c+'\u0001'+dd, sp={}, vd={}, fat={}, fatD={};
+  const usd=STATE.currency==='usd';
   fM.forEach(r=>{if(!r.d)return; sp[K(r[dim],r.d)]=(sp[K(r[dim],r.d)]||0)+r.sp;});
-  fS.forEach(r=>{if(!r.d)return; vd[K(r[dim],r.d)]=(vd[K(r[dim],r.d)]||0)+r.main;});
+  fS.forEach(r=>{if(!r.d)return; const k=K(r[dim],r.d); vd[k]=(vd[k]||0)+r.main; fat[k]=(fat[k]||0)+r.val;
+    fatD[k]=(fatD[k]||0)+(usd?r.val:(r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK)));});
+  const fmt=metric==='roas'?roasf:(metric==='tm'?brlNum:brl);
+  const val=(c,dd)=>{ const k=K(c,dd), s=(sp[k]||0)*taxf(), v=vd[k]||0;
+    if(metric==='cac') return v?+(s/v).toFixed(2):null;
+    if(metric==='roas') return s?+((fat[k]||0)/s).toFixed(2):null;
+    return v?+((fatD[k]||0)/v).toFixed(2):null; };
   const PAL=chartPalette();
   const ds=items.map((c,i)=>({label:c.length>22?c.slice(0,22)+'…':c, _full:c,
-    data:days.map(dd=>{const s=(sp[K(c,dd)]||0)*taxf(), v=vd[K(c,dd)]||0; return v?+(s/v).toFixed(2):null;}),
+    data:days.map(dd=>val(c,dd)),
     borderColor:PAL[i%PAL.length],backgroundColor:PAL[i%PAL.length],borderWidth:2,pointRadius:1.5,spanGaps:true,tension:.25}));
   const mut=cmuted();
   charts[id]=new Chart(el,{type:'line',data:{labels:days.map(x=>x.slice(5)),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{labels:{color:cink(),boxWidth:8,font:{size:9}}},
-        tooltip:{callbacks:{label:c=>(c.dataset._full||c.dataset.label)+': '+brl(c.raw)}}},
-      scales:{x:{ticks:{color:mut,font:{size:9},maxRotation:0,autoSkip:true,autoSkipPadding:8},grid:{display:false}},y:{ticks:{color:mut,font:{size:9},callback:v=>brl(v)},grid:{color:cgrid()},beginAtZero:true}}}});
+        tooltip:{callbacks:{label:c=>(c.dataset._full||c.dataset.label)+': '+fmt(c.raw)}}},
+      scales:{x:{ticks:{color:mut,font:{size:9},maxRotation:0,autoSkip:true,autoSkipPadding:8},grid:{display:false}},y:{ticks:{color:mut,font:{size:9},callback:v=>fmt(v)},grid:{color:cgrid()},beginAtZero:true}}}});
 }
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.metric-btns button'); if(!b) return;
+  const id=b.parentElement.dataset.chart; CHART_METRIC[id]=b.dataset.m;
+  if(CHART_ARGS[id]) dimChart(...CHART_ARGS[id]);
+});
 
 /* ---------------- KPI cards ---------------- */
 function kpiCard(k){ return `<div class="kpi ${k.hero?'hero':''}"><div class="kl"><span>${k.label}</span>${k.pill?`<span class="pill q">${k.pill}</span>`:''}</div><div class="kv">${k.val}</div><div class="ka">${k.aux||''}</div></div>`; }
@@ -597,9 +616,9 @@ function renderMeta(){
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra
      só as linhas selecionadas — senão cai no top-6 por gasto dentro do escopo herdado. */
-  cacDimChart('chCamp', Sc.fM, Sc.fS, 'camp', STATE.mSelC);
-  cacDimChart('chAdset', Sa.fM, Sa.fS, 'adset', STATE.mSelA);
-  cacDimChart('chAd', Sd.fM, Sd.fS, 'ad', STATE.mSelAd);
+  dimChart('chCamp', Sc.fM, Sc.fS, 'camp', STATE.mSelC);
+  dimChart('chAdset', Sa.fM, Sa.fS, 'adset', STATE.mSelA);
+  dimChart('chAd', Sd.fM, Sd.fS, 'ad', STATE.mSelAd);
 
   const vendas=fS.reduce((s,r)=>s+r.main,0);
   document.getElementById('qCount').textContent=vendas+' vendas · '+fS.length+' linhas';
