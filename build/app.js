@@ -197,6 +197,9 @@ function renderTable(cfg){
   const avail=table.parentElement?table.parentElement.clientWidth:0;
   cfg.cols.forEach((c,i)=>{ if(i===0 && c.big && avail>0 && !(STATE.colw[cfg.id]||{})[c.key]){
     const others=widths.reduce((a,b,j)=>j===i?a:a+b,0); widths[i]=Math.max(220,avail-others-10); }});
+  /* tabela diária (sem coluna de nome): escala todas as colunas p/ preencher exatamente o container, sem scroll lateral */
+  if(cfg.cols===DAILY_COLS && avail>0 && !Object.keys(STATE.colw[cfg.id]||{}).length){
+    const sum=widths.reduce((a,b)=>a+b,0), k=(avail-10)/sum; if(k>0.75) widths.forEach((w,i)=>widths[i]=Math.floor(w*k)); }
   const totalW=widths.reduce((a,b)=>a+b,0);
   const colgroup='<colgroup>'+cfg.cols.map((c,i)=>`<col style="width:${widths[i]}px">`).join('')+'</colgroup>';
   let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
@@ -375,7 +378,7 @@ const METRIC_COLS=[
   {key:'ticket',label:'Ticket',type:'brlx'},
   {key:'roas',label:'ROAS',type:'roas',heat:'roas'},      /* heatmap amarelo */
 ];
-const DAILY_COLS=[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:64}].concat(METRIC_COLS);
+const DAILY_COLS=[{key:'date',label:'Data',type:'date',w:84},{key:'wd',label:'Dia',type:'dim',w:44}].concat(METRIC_COLS);
 const HCOLS=[{key:'dim',label:'',type:'dim',big:true}].concat(METRIC_COLS);
 /* Só a tabela de Anúncios ganha HR/BR/ER (retenção de vídeo), entre CPM e CTR,
    e CPV (custo de Page View), entre CR e VisCHK —
