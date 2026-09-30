@@ -179,11 +179,11 @@
   .tbl-normal{max-height:250px}
   .tbl-double{max-height:420px}
   table.dt{border-collapse:separate; border-spacing:0; min-width:100%; font-size:12.5px; table-layout:fixed}
-  table.dt th, table.dt td{padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden}
-  table.dt thead th{position:sticky; top:0; z-index:2; background:var(--thead); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; text-align:center; cursor:pointer; user-select:none}
+  table.dt th, table.dt td{padding:7px 6px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden}
+  table.dt thead th{text-overflow:ellipsis; position:sticky; top:0; z-index:2; background:var(--thead); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; text-align:center; cursor:pointer; user-select:none}
   table.dt thead th .rsz{position:absolute; right:0; top:0; width:9px; height:100%; cursor:col-resize; z-index:3}
   table.dt thead th .rsz:hover{background:var(--accent-blue); opacity:.5}
-  table.dt th.dim, table.dt td.dim{text-align:left; white-space:normal; word-break:break-word; min-width:0}
+  table.dt th.dim, table.dt td.dim{text-align:left; white-space:nowrap; text-overflow:ellipsis; min-width:0; padding-left:10px}
   table.dt td{text-align:center; font-variant-numeric:tabular-nums}
   table.dt td.dim{font-weight:500}
   table.dt thead th.sorted-asc::after{content:" ▲"; font-size:9px}

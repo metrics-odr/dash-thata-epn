@@ -177,7 +177,9 @@ function colWidth(cfg,c){ const saved=(STATE.colw[cfg.id]||{})[c.key];
   if(c.w) return c.w;
   if(c.type==='date') return 96;
   if(c.type==='dim') return c.big?300:150;
-  return 88; }
+  return COL_W[c.key]||80; }
+/* larguras compactas por coluna p/ a tabela caber sem scroll lateral — a coluna de nome (big) absorve o resto (ver fitDim) */
+const COL_W={gasto:84,cpm:70,ctr:58,cr:58,cpv:70,hr:58,br:58,er:58,vischk:66,convchk:74,vendas:60,cac:78,usl:52,convUsl:66,dsl:52,convDsl:66,fat:98,ticket:84,roas:58};
 function renderTable(cfg){
   const table=document.getElementById(cfg.id); if(!table) return;
   const sortState=STATE.sort[cfg.id];
@@ -190,7 +192,12 @@ function renderTable(cfg){
   const ext={};
   cfg.cols.forEach(c=>{ if(c.heat){ const vs=rows.map(r=>r.cells[c.key]).filter(v=>v!=null&&isFinite(v)); ext[c.key]=[Math.min(...vs),Math.max(...vs)]; }});
   const fmt=(t,v,vex)=> t==='brlx'?brlEx(v,vex):t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='roas'?roasf(v):t==='date'?brdate(v):dimf(v);
-  const widths=cfg.cols.map(c=>colWidth(cfg,c)); const totalW=widths.reduce((a,b)=>a+b,0);
+  const widths=cfg.cols.map(c=>colWidth(cfg,c));
+  /* coluna de nome (big) ocupa o espaço que sobra do container (mín. 220px) */
+  const avail=table.parentElement?table.parentElement.clientWidth:0;
+  cfg.cols.forEach((c,i)=>{ if(c.big && avail>0 && !(STATE.colw[cfg.id]||{})[c.key]){
+    const others=widths.reduce((a,b,j)=>j===i?a:a+b,0); widths[i]=Math.max(220,avail-others-10); }});
+  const totalW=widths.reduce((a,b)=>a+b,0);
   const colgroup='<colgroup>'+cfg.cols.map((c,i)=>`<col style="width:${widths[i]}px">`).join('')+'</colgroup>';
   let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
     const sc = sortState&&sortState.key===c.key ? (sortState.dir==='asc'?'sorted-asc':'sorted-desc') : '';
@@ -360,9 +367,9 @@ const METRIC_COLS=[
   {key:'convchk',label:'ConvCHK',type:'pct'},
   {key:'vendas',label:'Vendas',type:'int',heat:'vendas'}, /* heatmap azul */
   {key:'cac',label:'CAC',type:'brl'},
-  {key:'usl',label:'Vendas USL',type:'int'},
+  {key:'usl',label:'V. USL',type:'int'},
   {key:'convUsl',label:'ConvUSL',type:'pct'},
-  {key:'dsl',label:'Vendas DSL',type:'int'},
+  {key:'dsl',label:'V. DSL',type:'int'},
   {key:'convDsl',label:'ConvDSL',type:'pct'},
   {key:'fat',label:'Faturamento',type:'brlx',heat:'fat'},  /* heatmap verde */
   {key:'ticket',label:'Ticket',type:'brlx'},
