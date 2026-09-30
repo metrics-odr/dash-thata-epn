@@ -195,7 +195,7 @@ function renderTable(cfg){
   const widths=cfg.cols.map(c=>colWidth(cfg,c));
   /* coluna de nome (big) ocupa o espaço que sobra do container (mín. 220px) */
   const avail=table.parentElement?table.parentElement.clientWidth:0;
-  cfg.cols.forEach((c,i)=>{ if(c.big && avail>0 && !(STATE.colw[cfg.id]||{})[c.key]){
+  cfg.cols.forEach((c,i)=>{ if(i===0 && c.big && avail>0 && !(STATE.colw[cfg.id]||{})[c.key]){
     const others=widths.reduce((a,b,j)=>j===i?a:a+b,0); widths[i]=Math.max(220,avail-others-10); }});
   const totalW=widths.reduce((a,b)=>a+b,0);
   const colgroup='<colgroup>'+cfg.cols.map((c,i)=>`<col style="width:${widths[i]}px">`).join('')+'</colgroup>';
