@@ -1,15 +1,15 @@
 {
-  "gerado_em": "05/10/2026 00:00",
+  "gerado_em": "05/10/2026 06:38",
   "hoje": "2026-10-05",
   "periodo_dados": {
     "de": "2026-08-01",
-    "ate": "2026-10-04"
+    "ate": "2026-10-05"
   },
   "metas": {
     "cac": 0.0,
     "roas": 0.0
   },
-  "ticket_medio_geral": 63.55,
+  "ticket_medio_geral": 63.54,
   "periodos": {
     "hoje": {
       "de": "2026-10-05",
@@ -20,8 +20,8 @@
         "cliques": 0.0,
         "pv": 0.0,
         "ck": 0.0,
-        "vendas": 0,
-        "fat": 0.0,
+        "vendas": 1,
+        "fat": 55.0,
         "cpm": null,
         "ctr": null,
         "cpc": null,
@@ -31,9 +31,9 @@
         "vischk": null,
         "convchk": null,
         "convlp": null,
-        "cac": null,
+        "cac": 0.0,
         "roas": null,
-        "ticket": null
+        "ticket": 55.0
       },
       "ads": {
         "gasto": 0.0,
@@ -41,8 +41,8 @@
         "cliques": 0.0,
         "pv": 0.0,
         "ck": 0.0,
-        "vendas": 0,
-        "fat": 0.0,
+        "vendas": 1,
+        "fat": 55.0,
         "cpm": null,
         "ctr": null,
         "cpc": null,
@@ -52,11 +52,34 @@
         "vischk": null,
         "convchk": null,
         "convlp": null,
-        "cac": null,
+        "cac": 0.0,
         "roas": null,
-        "ticket": null
+        "ticket": 55.0
       },
-      "campanhas": [],
+      "campanhas": [
+        {
+          "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-25 | Teste de Ads 14",
+          "gasto": 0.0,
+          "impr": 0.0,
+          "cliques": 0.0,
+          "pv": 0.0,
+          "ck": 0.0,
+          "vendas": 1,
+          "fat": 55.0,
+          "cpm": null,
+          "ctr": null,
+          "cpc": null,
+          "cpv": null,
+          "cr": null,
+          "cpic": null,
+          "vischk": null,
+          "convchk": null,
+          "convlp": null,
+          "cac": 0.0,
+          "roas": null,
+          "ticket": 55.0
+        }
+      ],
       "top_anuncios": [],
       "piores_anuncios": []
     },
@@ -1267,8 +1290,8 @@
         "cliques": 1517.0,
         "pv": 1371.0,
         "ck": 139.0,
-        "vendas": 55,
-        "fat": 3743.36,
+        "vendas": 56,
+        "fat": 3798.36,
         "cpm": 16.18,
         "ctr": 0.0175,
         "cpc": 0.92,
@@ -1276,11 +1299,11 @@
         "cr": 0.9038,
         "cpic": 10.07,
         "vischk": 0.1014,
-        "convchk": 0.3597,
-        "convlp": 0.0365,
-        "cac": 25.45,
-        "roas": 2.67,
-        "ticket": 68.06
+        "convchk": 0.3669,
+        "convlp": 0.0372,
+        "cac": 25.0,
+        "roas": 2.71,
+        "ticket": 67.83
       },
       "ads": {
         "gasto": 1399.89,
@@ -1288,8 +1311,8 @@
         "cliques": 1517.0,
         "pv": 1371.0,
         "ck": 139.0,
-        "vendas": 50,
-        "fat": 3468.36,
+        "vendas": 51,
+        "fat": 3523.36,
         "cpm": 16.18,
         "ctr": 0.0175,
         "cpc": 0.92,
@@ -1297,11 +1320,11 @@
         "cr": 0.9038,
         "cpic": 10.07,
         "vischk": 0.1014,
-        "convchk": 0.3597,
-        "convlp": 0.0365,
-        "cac": 28.0,
-        "roas": 2.48,
-        "ticket": 69.37
+        "convchk": 0.3669,
+        "convlp": 0.0372,
+        "cac": 27.45,
+        "roas": 2.52,
+        "ticket": 69.09
       },
       "campanhas": [
         {
@@ -1311,8 +1334,8 @@
           "cliques": 363.0,
           "pv": 340.0,
           "ck": 33.0,
-          "vendas": 15,
-          "fat": 990.56,
+          "vendas": 16,
+          "fat": 1045.56,
           "cpm": 13.53,
           "ctr": 0.0157,
           "cpc": 0.86,
@@ -1320,11 +1343,11 @@
           "cr": 0.9366,
           "cpic": 9.47,
           "vischk": 0.0971,
-          "convchk": 0.4545,
-          "convlp": 0.0441,
-          "cac": 20.83,
-          "roas": 3.17,
-          "ticket": 66.04
+          "convchk": 0.4848,
+          "convlp": 0.0471,
+          "cac": 19.53,
+          "roas": 3.35,
+          "ticket": 65.35
         },
         {
           "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-16 | CostCap | Escala | F2 - V4",
@@ -2465,8 +2488,8 @@
         "cliques": 9539.0,
         "pv": 8216.0,
         "ck": 567.0,
-        "vendas": 151,
-        "fat": 10017.28,
+        "vendas": 152,
+        "fat": 10072.28,
         "cpm": 8.84,
         "ctr": 0.012,
         "cpc": 0.74,
@@ -2474,11 +2497,11 @@
         "cr": 0.8613,
         "cpic": 12.38,
         "vischk": 0.069,
-        "convchk": 0.2346,
-        "convlp": 0.0162,
-        "cac": 46.5,
+        "convchk": 0.2363,
+        "convlp": 0.0163,
+        "cac": 46.19,
         "roas": 1.43,
-        "ticket": 66.34
+        "ticket": 66.27
       },
       "ads": {
         "gasto": 7020.94,
@@ -2486,8 +2509,8 @@
         "cliques": 9539.0,
         "pv": 8216.0,
         "ck": 567.0,
-        "vendas": 133,
-        "fat": 9027.28,
+        "vendas": 134,
+        "fat": 9082.28,
         "cpm": 8.84,
         "ctr": 0.012,
         "cpc": 0.74,
@@ -2495,11 +2518,11 @@
         "cr": 0.8613,
         "cpic": 12.38,
         "vischk": 0.069,
-        "convchk": 0.2346,
-        "convlp": 0.0162,
-        "cac": 52.79,
+        "convchk": 0.2363,
+        "convlp": 0.0163,
+        "cac": 52.4,
         "roas": 1.29,
-        "ticket": 67.87
+        "ticket": 67.78
       },
       "campanhas": [
         {
@@ -2509,8 +2532,8 @@
           "cliques": 1833.0,
           "pv": 1741.0,
           "ck": 145.0,
-          "vendas": 37,
-          "fat": 2366.12,
+          "vendas": 38,
+          "fat": 2421.12,
           "cpm": 12.22,
           "ctr": 0.0148,
           "cpc": 0.82,
@@ -2518,11 +2541,11 @@
           "cr": 0.9498,
           "cpic": 10.42,
           "vischk": 0.0833,
-          "convchk": 0.2552,
-          "convlp": 0.0213,
-          "cac": 40.83,
-          "roas": 1.57,
-          "ticket": 63.95
+          "convchk": 0.2621,
+          "convlp": 0.0218,
+          "cac": 39.76,
+          "roas": 1.6,
+          "ticket": 63.71
         },
         {
           "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-05 | Teste de Ads 4",
@@ -3663,8 +3686,8 @@
         "cliques": 20981.0,
         "pv": 18394.0,
         "ck": 1404.0,
-        "vendas": 328,
-        "fat": 20763.99,
+        "vendas": 329,
+        "fat": 20818.99,
         "cpm": 10.33,
         "ctr": 0.0128,
         "cpc": 0.81,
@@ -3672,11 +3695,11 @@
         "cr": 0.8767,
         "cpic": 12.06,
         "vischk": 0.0763,
-        "convchk": 0.2108,
+        "convchk": 0.2115,
         "convlp": 0.0161,
-        "cac": 51.62,
+        "cac": 51.46,
         "roas": 1.23,
-        "ticket": 63.3
+        "ticket": 63.28
       },
       "ads": {
         "gasto": 16929.74,
@@ -3684,8 +3707,8 @@
         "cliques": 20981.0,
         "pv": 18394.0,
         "ck": 1404.0,
-        "vendas": 296,
-        "fat": 18986.76,
+        "vendas": 297,
+        "fat": 19041.76,
         "cpm": 10.33,
         "ctr": 0.0128,
         "cpc": 0.81,
@@ -3693,11 +3716,11 @@
         "cr": 0.8767,
         "cpic": 12.06,
         "vischk": 0.0763,
-        "convchk": 0.2108,
+        "convchk": 0.2115,
         "convlp": 0.0161,
-        "cac": 57.2,
+        "cac": 57.0,
         "roas": 1.12,
-        "ticket": 64.14
+        "ticket": 64.11
       },
       "campanhas": [
         {
@@ -3751,8 +3774,8 @@
           "cliques": 2260.0,
           "pv": 2142.0,
           "ck": 183.0,
-          "vendas": 48,
-          "fat": 3081.68,
+          "vendas": 49,
+          "fat": 3136.68,
           "cpm": 12.6,
           "ctr": 0.015,
           "cpc": 0.84,
@@ -3760,11 +3783,11 @@
           "cr": 0.9478,
           "cpic": 10.35,
           "vischk": 0.0854,
-          "convchk": 0.2623,
-          "convlp": 0.0224,
-          "cac": 39.45,
-          "roas": 1.63,
-          "ticket": 64.2
+          "convchk": 0.2678,
+          "convlp": 0.0229,
+          "cac": 38.64,
+          "roas": 1.66,
+          "ticket": 64.01
         },
         {
           "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-02 | Teste de Ads 2",
@@ -4861,8 +4884,8 @@
         "cliques": 47474.0,
         "pv": 42936.0,
         "ck": 3478.0,
-        "vendas": 770,
-        "fat": 48994.11,
+        "vendas": 771,
+        "fat": 49049.11,
         "cpm": 10.59,
         "ctr": 0.0134,
         "cpc": 0.79,
@@ -4870,11 +4893,11 @@
         "cr": 0.9044,
         "cpic": 10.81,
         "vischk": 0.081,
-        "convchk": 0.2024,
+        "convchk": 0.2027,
         "convlp": 0.0164,
-        "cac": 48.84,
+        "cac": 48.78,
         "roas": 1.3,
-        "ticket": 63.63
+        "ticket": 63.62
       },
       "ads": {
         "gasto": 37608.67,
@@ -4882,8 +4905,8 @@
         "cliques": 47474.0,
         "pv": 42936.0,
         "ck": 3478.0,
-        "vendas": 704,
-        "fat": 45236.32,
+        "vendas": 705,
+        "fat": 45291.32,
         "cpm": 10.59,
         "ctr": 0.0134,
         "cpc": 0.79,
@@ -4891,11 +4914,11 @@
         "cr": 0.9044,
         "cpic": 10.81,
         "vischk": 0.081,
-        "convchk": 0.2024,
+        "convchk": 0.2027,
         "convlp": 0.0164,
-        "cac": 53.42,
+        "cac": 53.35,
         "roas": 1.2,
-        "ticket": 64.26
+        "ticket": 64.24
       },
       "campanhas": [
         {
@@ -5015,8 +5038,8 @@
           "cliques": 2260.0,
           "pv": 2142.0,
           "ck": 183.0,
-          "vendas": 48,
-          "fat": 3081.68,
+          "vendas": 49,
+          "fat": 3136.68,
           "cpm": 12.6,
           "ctr": 0.015,
           "cpc": 0.84,
@@ -5024,11 +5047,11 @@
           "cr": 0.9478,
           "cpic": 10.35,
           "vischk": 0.0854,
-          "convchk": 0.2623,
-          "convlp": 0.0224,
-          "cac": 39.45,
-          "roas": 1.63,
-          "ticket": 64.2
+          "convchk": 0.2678,
+          "convlp": 0.0229,
+          "cac": 38.64,
+          "roas": 1.66,
+          "ticket": 64.01
         },
         {
           "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-02 | Teste de Ads 2",
@@ -6059,8 +6082,8 @@
         "cliques": 3778.0,
         "pv": 3433.0,
         "ck": 313.0,
-        "vendas": 98,
-        "fat": 6716.16,
+        "vendas": 99,
+        "fat": 6771.16,
         "cpm": 15.35,
         "ctr": 0.0163,
         "cpc": 0.94,
@@ -6068,11 +6091,11 @@
         "cr": 0.9087,
         "cpic": 11.35,
         "vischk": 0.0912,
-        "convchk": 0.278,
-        "convlp": 0.0253,
-        "cac": 36.27,
-        "roas": 1.89,
-        "ticket": 68.53
+        "convchk": 0.2812,
+        "convlp": 0.0256,
+        "cac": 35.9,
+        "roas": 1.91,
+        "ticket": 68.4
       },
       "ads": {
         "gasto": 3554.07,
@@ -6080,8 +6103,8 @@
         "cliques": 3778.0,
         "pv": 3433.0,
         "ck": 313.0,
-        "vendas": 87,
-        "fat": 6111.16,
+        "vendas": 88,
+        "fat": 6166.16,
         "cpm": 15.35,
         "ctr": 0.0163,
         "cpc": 0.94,
@@ -6089,11 +6112,11 @@
         "cr": 0.9087,
         "cpic": 11.35,
         "vischk": 0.0912,
-        "convchk": 0.278,
-        "convlp": 0.0253,
-        "cac": 40.85,
-        "roas": 1.72,
-        "ticket": 70.24
+        "convchk": 0.2812,
+        "convlp": 0.0256,
+        "cac": 40.39,
+        "roas": 1.73,
+        "ticket": 70.07
       },
       "campanhas": [
         {
@@ -6103,8 +6126,8 @@
           "cliques": 1127.0,
           "pv": 1058.0,
           "ck": 71.0,
-          "vendas": 24,
-          "fat": 1596.12,
+          "vendas": 25,
+          "fat": 1651.12,
           "cpm": 12.13,
           "ctr": 0.015,
           "cpc": 0.81,
@@ -6112,11 +6135,11 @@
           "cr": 0.9388,
           "cpic": 12.86,
           "vischk": 0.0671,
-          "convchk": 0.338,
-          "convlp": 0.0227,
-          "cac": 38.04,
-          "roas": 1.75,
-          "ticket": 66.5
+          "convchk": 0.3521,
+          "convlp": 0.0236,
+          "cac": 36.52,
+          "roas": 1.81,
+          "ticket": 66.04
         },
         {
           "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-16 | CostCap | Escala | F2 - V4",
@@ -8448,15 +8471,15 @@
     },
     "todo": {
       "de": "2026-08-01",
-      "ate": "2026-10-04",
+      "ate": "2026-10-05",
       "total": {
         "gasto": 40314.71,
         "impr": 3761666.0,
         "cliques": 51922.0,
         "pv": 47417.0,
         "ck": 3949.0,
-        "vendas": 926,
-        "fat": 58844.15,
+        "vendas": 927,
+        "fat": 58899.15,
         "cpm": 10.72,
         "ctr": 0.0138,
         "cpc": 0.78,
@@ -8464,11 +8487,11 @@
         "cr": 0.9132,
         "cpic": 10.21,
         "vischk": 0.0833,
-        "convchk": 0.2147,
+        "convchk": 0.215,
         "convlp": 0.0179,
-        "cac": 43.54,
+        "cac": 43.49,
         "roas": 1.46,
-        "ticket": 63.55
+        "ticket": 63.54
       },
       "ads": {
         "gasto": 40314.71,
@@ -8476,8 +8499,8 @@
         "cliques": 51922.0,
         "pv": 47417.0,
         "ck": 3949.0,
-        "vendas": 848,
-        "fat": 54371.36,
+        "vendas": 849,
+        "fat": 54426.36,
         "cpm": 10.72,
         "ctr": 0.0138,
         "cpc": 0.78,
@@ -8485,11 +8508,11 @@
         "cr": 0.9132,
         "cpic": 10.21,
         "vischk": 0.0833,
-        "convchk": 0.2147,
+        "convchk": 0.215,
         "convlp": 0.0179,
-        "cac": 47.54,
+        "cac": 47.48,
         "roas": 1.35,
-        "ticket": 64.12
+        "ticket": 64.11
       },
       "campanhas": [
         {
@@ -8631,8 +8654,8 @@
           "cliques": 2260.0,
           "pv": 2142.0,
           "ck": 183.0,
-          "vendas": 48,
-          "fat": 3081.68,
+          "vendas": 49,
+          "fat": 3136.68,
           "cpm": 12.6,
           "ctr": 0.015,
           "cpc": 0.84,
@@ -8640,11 +8663,11 @@
           "cr": 0.9478,
           "cpic": 10.35,
           "vischk": 0.0854,
-          "convchk": 0.2623,
-          "convlp": 0.0224,
-          "cac": 39.45,
-          "roas": 1.63,
-          "ticket": 64.2
+          "convchk": 0.2678,
+          "convlp": 0.0229,
+          "cac": 38.64,
+          "roas": 1.66,
+          "ticket": 64.01
         },
         {
           "nome": "EPN | E4-VEN | P1-FRIO | CBO | 2026-09-25 | Teste de Ads 12",
