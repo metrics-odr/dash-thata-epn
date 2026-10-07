@@ -196,7 +196,7 @@ function renderTable(cfg){
   /* coluna de nome (big) ocupa o espaço que sobra do container (mín. 220px) */
   const avail=table.parentElement?table.parentElement.clientWidth:0;
   cfg.cols.forEach((c,i)=>{ if(i===0 && c.big && avail>0 && !(STATE.colw[cfg.id]||{})[c.key]){
-    const others=widths.reduce((a,b,j)=>j===i?a:a+b,0); widths[i]=Math.max(220,avail-others-10); }});
+    const others=widths.reduce((a,b,j)=>j===i?a:a+b,0); widths[i]=Math.max(cfg.minBig||220,avail-others-10); }});
   const totalW=widths.reduce((a,b)=>a+b,0);
   const colgroup='<colgroup>'+cfg.cols.map((c,i)=>`<col style="width:${widths[i]}px">`).join('')+'</colgroup>';
   let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
@@ -421,7 +421,28 @@ function renderProdTable(id, salesSet){
   Object.entries(byProd).sort((a,b)=>b[1]-a[1]).forEach(([prod,c])=>{
     rows.push({k:prod, cells:{prod:prod, vendas:c, pctm:mainCount?c/mainCount:null}});
   });
-  renderTable({id, cols:[{key:'prod',label:'Produto',type:'dim',big:true},{key:'vendas',label:'Vendas',type:'int',w:80},{key:'pctm',label:'% vs principal',type:'pct',w:120}], rows});
+  renderTable({id, minBig:110, cols:[{key:'prod',label:'Produto',type:'dim',big:true},{key:'vendas',label:'Vendas',type:'int',w:60},{key:'pctm',label:'% vs principal',type:'pct',w:100}], rows});
+}
+
+/* ---------------- tabela Vendas por dia da semana ----------------
+   Soma, por dia da semana (Segunda..Domingo), os mesmos buckets diários usados
+   no resto da aba (daily()) — Gasto/Vendas/CAC/Faturamento/ROAS saem de derive(). */
+const WD_FULL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const WD_ORDER=[1,2,3,4,5,6,0];
+function renderWeekdayTable(id, dd){
+  const by=WD_ORDER.map(()=>newBucket());
+  dd.forEach(x=>{ const dt=new Date(x.d+'T00:00:00'); if(isNaN(dt)) return;
+    const b=by[WD_ORDER.indexOf(dt.getDay())];
+    Object.keys(b).forEach(k=>{ b[k]+=(x[k]||0); }); });
+  const rows=WD_ORDER.map((w,i)=>{ const b=by[i], d=derive(b);
+    return {k:WD_FULL[w], cells:{dia:WD_FULL[w], gasto:d.gasto, vendas:b.vendas, cac:d.cac, fat:b.fat, fat_ex:b.fatBRL, roas:d.roas}}; });
+  renderTable({id, cols:[
+    {key:'dia',label:'Dia',type:'dim',w:72},
+    {key:'gasto',label:'Gasto',type:'brl',w:80},
+    {key:'vendas',label:'Vendas',type:'int',w:58},
+    {key:'cac',label:'CAC',type:'brl',w:72},
+    {key:'fat',label:'Fat.',type:'brlx',w:92},
+    {key:'roas',label:'ROAS',type:'roas',w:56}], rows});
 }
 
 /* ---------------- funil + gráficos de conversão (comuns às 2 abas) ---------------- */
@@ -489,6 +510,7 @@ function renderGeral(){
   convCharts('gCpmCtr','gCrVis','gConv', dd);
   comboChart('gCombo', dd);
   renderProdTable('gProd', fS);
+  renderWeekdayTable('gWeek', dd);
 
   const dl=dd.slice().reverse();
   renderTable({id:'gDaily', cols:DAILY_COLS,
@@ -580,6 +602,7 @@ function renderMeta(){
   const aggAd=buildAgg(fS,fM,'ad');
   hbar('mContent', Object.entries(aggAd).map(([label,a])=>({label,v:STATE.currency==='usd'?a.fat:a.fatBRL})), x=>x.v, cvar('--chart-faturamento'), 10, brlNum);
   renderProdTable('mProd', fS);
+  renderWeekdayTable('mWeek', dd);
 
   const dl=dd.slice().reverse();
   renderTable({id:'tDaily', cols:DAILY_COLS,
