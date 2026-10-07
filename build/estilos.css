@@ -104,6 +104,9 @@
   .two-col{grid-template-columns:380px 1fr}
   .three-col{grid-template-columns:360px 1fr}
   .funnel-grid{grid-template-columns:340px 1fr; align-items:start}
+  .split-card{display:flex; flex-wrap:wrap; align-items:flex-start}
+  .split-half{flex:1 1 320px; min-width:0}
+  .split-half + .split-half{border-left:1px solid var(--border,rgba(128,128,128,.25))}
   .funnel-charts{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-content:start}
   @media(max-width:1000px){.two-col,.three-col,.funnel-grid{grid-template-columns:1fr}}
   @media(max-width:1200px){.funnel-charts{grid-template-columns:1fr}}
