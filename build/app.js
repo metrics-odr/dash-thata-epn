@@ -438,11 +438,11 @@ function renderWeekdayTable(id, dd){
     return {k:WD_FULL[w], cells:{dia:WD_FULL[w], gasto:d.gasto, vendas:b.vendas, cac:d.cac, fat:b.fat, fat_ex:b.fatBRL, roas:d.roas}}; });
   renderTable({id, cols:[
     {key:'dia',label:'Dia',type:'dim',w:72},
-    {key:'gasto',label:'Gasto',type:'brl',w:80},
+    {key:'gasto',label:'Gasto',type:'brl',w:80,heat:'gasto'},
     {key:'vendas',label:'Vendas',type:'int',w:58},
     {key:'cac',label:'CAC',type:'brl',w:72},
     {key:'fat',label:'Fat.',type:'brlx',w:92},
-    {key:'roas',label:'ROAS',type:'roas',w:56}], rows});
+    {key:'roas',label:'ROAS',type:'roas',w:56,heat:'roas'}], rows});
 }
 
 /* ---------------- funil + gráficos de conversão (comuns às 2 abas) ---------------- */
