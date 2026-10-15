@@ -222,7 +222,7 @@ pelo e-mail como no Meta. O build emite `gads[]` ao lado de `meta[]`; no navegad
 `renderChannel(ch)` em `build/app.js`). Visão Geral e Relatórios somam o gasto dos dois canais;
 o toggle "Imposto Meta" só incide sobre o gasto do Meta (`spt`), e CR/CPV/CPIC da Visão Geral
 usam só linhas com Page Views (`clp`/`spp`), para o Google não diluir. Moeda do `Cost` assumida
-igual à do Meta (USD) — confirmar. `build/gerar_relatorios.py` ainda não considera o Google.
+igual à do Meta (USD) — confirmar. `build/gerar_relatorios.py` também inclui o Google (bloco "ads" = Meta + Google; campanhas/anúncios dos dois canais).
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
