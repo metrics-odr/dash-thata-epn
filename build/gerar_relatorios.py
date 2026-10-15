@@ -65,12 +65,16 @@ def extract_xlsx(xlsx_path: str, meta_out: str, sales_out: str) -> None:
 # Métricas (mesma matemática do app.js: derive/agg)
 # --------------------------------------------------------------------------- #
 def new_bucket() -> dict:
-    return dict(sp=0.0, im=0.0, cl=0.0, pv=0.0, ck=0.0, vendas=0, vendasM=0, fat=0.0)
+    return dict(sp=0.0, spt=0.0, spp=0.0, clp=0.0, im=0.0, cl=0.0, pv=0.0, ck=0.0, vendas=0, vendasM=0, fat=0.0)
 
 
 def add_meta(a: dict, m: dict) -> None:
     for k in ("sp", "im", "cl", "pv", "ck"):
         a[k] += m[k]
+    # Meta: gasto sujeito ao imposto e com Page Views; Google (gads): sem imposto e
+    # sem Page Views (mesma regra de build/app.js: spt/spp/clp).
+    if not m.get("_gads"):
+        a["spt"] += m["sp"]; a["spp"] += m["sp"]; a["clp"] += m["cl"]
 
 
 def add_sale(a: dict, s: dict) -> None:
@@ -84,11 +88,12 @@ def sd(n, d):
 
 
 def derive(a: dict, tax: float) -> dict:
-    g = a["sp"] * tax
+    g = a["sp"] + (tax - 1) * a["spt"]
+    gp = a["spp"] * tax
     return dict(
         gasto=g, impr=a["im"], cliques=a["cl"], pv=a["pv"], ck=a["ck"], vendas=a["vendas"], fat=a["fat"],
-        cpm=sd(g * 1000, a["im"]), ctr=sd(a["cl"], a["im"]), cpc=sd(g, a["cl"]), cpv=sd(g, a["pv"]),
-        cr=sd(a["pv"], a["cl"]), cpic=sd(g, a["ck"]), vischk=sd(a["ck"], a["pv"]),
+        cpm=sd(g * 1000, a["im"]), ctr=sd(a["cl"], a["im"]), cpc=sd(g, a["cl"]), cpv=sd(gp, a["pv"]),
+        cr=sd(a["pv"], a["clp"]), cpic=sd(gp, a["ck"]), vischk=sd(a["ck"], a["pv"]),
         convchk=sd(a["vendasM"], a["ck"]), convlp=sd(a["vendasM"], a["pv"]),
         cac=sd(g, a["vendas"]), roas=sd(a["fat"], g), ticket=sd(a["fat"], a["vendas"]),
     )
@@ -129,7 +134,7 @@ def totals(meta, sales, a, b, ads_only):
             add_meta(bk, m)
     for s in sales:
         if in_range(s["d"], a, b):
-            if ads_only and not s["meta"]:
+            if ads_only and not (s["meta"] or s["gads"]):
                 continue
             add_sale(bk, s)
     return bk
@@ -142,7 +147,7 @@ def by_dim(meta, sales, a, b, dim):
             mp.setdefault(m[dim], new_bucket())
             add_meta(mp[m[dim]], m)
     for s in sales:
-        if in_range(s["d"], a, b) and s["meta"]:
+        if in_range(s["d"], a, b) and (s["meta"] or s["gads"]):
             mp.setdefault(s[dim], new_bucket())
             add_sale(mp[s[dim]], s)
     return mp
@@ -161,7 +166,7 @@ def by_ad_full(meta, sales, a, b):
             mp.setdefault(key, new_bucket())
             add_meta(mp[key], m)
     for s in sales:
-        if in_range(s["d"], a, b) and s["meta"]:
+        if in_range(s["d"], a, b) and (s["meta"] or s["gads"]):
             key = (s["camp"], s["adset"], s["ad"])
             mp.setdefault(key, new_bucket())
             add_sale(mp[key], s)
@@ -204,6 +209,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--meta-file")
     ap.add_argument("--sales-file")
+    ap.add_argument("--google-file")
     ap.add_argument("--xlsx", help="workbook .xlsx com as abas Meta Ads/Compras")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                   "relatorios_metrics.json"))
@@ -220,9 +226,15 @@ def main():
     # Google Sheets (mesmo caminho do build.py) — usado pelo GitHub Actions,
     # que alcança docs.google.com (o sandbox do agente não alcança).
     meta_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_META), meta_file)
+    google_rows = None
+    if args.google_file or build.GID_GOOGLE:
+        google_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_GOOGLE), args.google_file)
     sales_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_SALES), sales_file)
-    data = build.process(meta_rows, sales_rows)
-    meta, sales, B = data["meta"], data["sales"], data["build"]
+    data = build.process(meta_rows, sales_rows, google_rows=google_rows)
+    for g in data["gads"]:
+        g["_gads"] = True
+    # gasto/mídia de Meta + Google; vendas atribuídas a qualquer um dos dois
+    meta, sales, B = data["meta"] + data["gads"], data["sales"], data["build"]
     tax = B["tax_factor"]  # imposto Meta aplicado (mesmo default da UI: ON)
 
     ps = presets(B["today"], B["date_min"], B["date_max"])

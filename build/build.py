@@ -52,6 +52,8 @@ if _missing:
 SPREADSHEET_ID = cfg.SPREADSHEET_ID
 GID_META = cfg.GID_META
 GID_SALES = cfg.GID_SALES
+# Aba "Google Ads" (opcional) — mesma planilha. Sem GID_GOOGLE a aba some do build.
+GID_GOOGLE = getattr(cfg, "GID_GOOGLE", "") or ""
 TAX_FACTOR = cfg.TAX_FACTOR
 MAIN_PRODUCT_PREFIX = cfg.MAIN_PRODUCT_PREFIX
 COUNT_ALL_AS_PAID = cfg.COUNT_ALL_AS_PAID
@@ -268,7 +270,8 @@ def split_utm_detail(raw: str) -> tuple[str, str, str, str]:
 # --------------------------------------------------------------------------- #
 # Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
-def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_live: bool = False):
+def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_live: bool = False,
+            google_rows=None):
     # ---------------- Aba META ADS ----------------
     # Colunas reais: Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent ·
     #   Impressions · Link Clicks · Landing Page Views · Checkouts Initiated · ...
@@ -365,6 +368,43 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "ds": is_active_status(ad_st) if ad_st else None,
         })
 
+    # ---------------- Aba GOOGLE ADS ----------------
+    # Colunas: Day · Campaign Name · Ad Group · Ad Name · Cost · Impressions · Clicks
+    # (a aba só vai até Cliques — sem Page Views/Checkouts, que ficam em branco).
+    # Mesma lógica de cruzamento do Meta: campanha + anúncio (Ad Name = utm_content).
+    gheader = google_rows[0] if google_rows else []
+    gidx = header_index(
+        gheader,
+        {"day": ["day", "data"], "campaign": ["campaign name", "campaign", "campanha"],
+         "adset": ["ad group name", "ad group", "grupo de anuncios"], "ad": ["ad name"],
+         "spent": ["cost", "custo", "amount spent"], "impr": ["impressions", "impress"],
+         "clicks": ["clicks", "cliques"]},
+        {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4, "impr": 5, "clicks": 6},
+    )
+    gads = []
+    gad_map = {}
+    for row in (google_rows or [])[1:]:
+        if not any((c or "").strip() for c in row):
+            continue
+        if is_test_row(" ".join(str(c) for c in row)):
+            continue
+        camp = cell(row, gidx["campaign"]) or "(sem campanha)"
+        adset = cell(row, gidx["adset"]) or "(sem grupo)"
+        ad = cell(row, gidx["ad"]) or "(sem anúncio)"
+        gkey = (norm(camp), norm(ad))
+        if gkey not in gad_map:
+            gad_map[gkey] = (camp, adset)
+        gads.append({
+            "d": parse_date(cell(row, gidx["day"])),
+            "camp": camp, "adset": adset, "ad": ad,
+            "sp": round(to_float(cell(row, gidx["spent"])), 4),
+            "im": to_float(cell(row, gidx["impr"])),
+            "cl": to_float(cell(row, gidx["clicks"])),
+            # Sem Page Views/Checkouts/vídeo nesta aba (em branco por enquanto).
+            "pv": 0, "ck": 0, "vv3": 0, "vv50": 0, "vv95": 0,
+            "cs": None, "as": None, "ds": None,
+        })
+
     # ---------------- Aba COMPRADORES ----------------
     # Colunas reais: Data de Criação · Cliente / Nome · Cliente / E-mail · Produto ·
     #   Valor da Venda · UTM Content · UTM Campaign · UTM Medium · UTM Source · Status
@@ -444,6 +484,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         # entre campanhas; casar só pelo anúncio atribui a venda à campanha errada).
         meta_key = (norm(sale_camp), norm(ad))
         meta_hit = ad_map.get(meta_key)
+        # Só tenta o Google se não casou com o Meta (Meta tem prioridade).
+        gads_hit = None if meta_hit is not None else gad_map.get(meta_key)
         val_brl_raw = cell(row, sidx["val_brl"]) if sidx.get("val_brl") is not None else ""
         if val_brl_raw:
             # Coluna de correção do cliente vem em REAIS -> converte pra USD
@@ -466,7 +508,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         raw_rows.append({
             "d": parse_date(cell(row, sidx["created"])),
             "prod": prod, "main": main, "upsell": upsell,
-            "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit,
+            "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit, "gads_hit": gads_hit,
             "email_n": norm(cell(row, sidx["email"])),
             "val": val,
             "val_brl_exact": val_brl_exact,
@@ -482,19 +524,23 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
     for r in raw_rows:
         if r["main"] and r["email_n"]:
             if r["meta_hit"] is not None:
-                camp, adset, is_meta = r["meta_hit"][0], r["meta_hit"][1], True
+                camp, adset, ch = r["meta_hit"][0], r["meta_hit"][1], "meta"
+            elif r["gads_hit"] is not None:
+                camp, adset, ch = r["gads_hit"][0], r["gads_hit"][1], "gads"
             else:
-                camp, adset, is_meta = r["sale_camp"], r["adset_own"], False
-            email_attr[r["email_n"]] = (camp, adset, r["ad"], is_meta)
+                camp, adset, ch = r["sale_camp"], r["adset_own"], None
+            email_attr[r["email_n"]] = (camp, adset, r["ad"], ch)
 
     sales = []
     for r in raw_rows:
         if r["meta_hit"] is not None:
-            camp, adset, ad_out, is_meta = r["meta_hit"][0], r["meta_hit"][1], r["ad"], True
+            camp, adset, ad_out, ch = r["meta_hit"][0], r["meta_hit"][1], r["ad"], "meta"
+        elif r["gads_hit"] is not None:
+            camp, adset, ad_out, ch = r["gads_hit"][0], r["gads_hit"][1], r["ad"], "gads"
         elif r["upsell"] and r["email_n"] in email_attr:
-            camp, adset, ad_out, is_meta = email_attr[r["email_n"]]
+            camp, adset, ad_out, ch = email_attr[r["email_n"]]
         else:
-            camp, adset, ad_out, is_meta = r["sale_camp"], r["adset_own"], r["ad"], False
+            camp, adset, ad_out, ch = r["sale_camp"], r["adset_own"], r["ad"], None
         val = r["val"]
         prod_out = r["prod"] or "—"
         if r["upsell"]:
@@ -517,11 +563,14 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "main": 1 if r["main"] else 0,
             # meta=1 quando a venda (ou, p/ upsell/downsell, a compra do produto
             # principal do mesmo comprador) casa com campanha+anúncio real do Meta.
-            "meta": 1 if is_meta else 0,
+            "meta": 1 if ch == "meta" else 0,
+            # gads=1 quando casa (campanha+anúncio) com a aba Google Ads — mesma
+            # lógica do flag meta (mutuamente exclusivos; Meta tem prioridade).
+            "gads": 1 if ch == "gads" else 0,
             "nm": r["nm"], "em": r["em"],
         })
 
-    dates = sorted({d for d in ([m["d"] for m in meta if m["d"]] + [s["d"] for s in sales if s["d"]])})
+    dates = sorted({d for d in ([m["d"] for m in meta + gads if m["d"]] + [s["d"] for s in sales if s["d"]])})
     now_brt = datetime.now(BRT)
     return {
         "build": {
@@ -552,6 +601,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "fx_rate_build_is_live": fx_rate_live,
         },
         "meta": meta,
+        "gads": gads,
         "sales": sales,
         "ad_links": ad_links,
         # Briefings do Gestor por período (gerados por IA 1x/dia via Routine e
@@ -609,12 +659,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--meta-file")
     ap.add_argument("--sales-file")
+    ap.add_argument("--google-file")
     ap.add_argument("--template", default="build/template.html")
     ap.add_argument("--out", default="dist/index.html")
     args = ap.parse_args()
 
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
+    google_rows = None
+    if args.google_file or GID_GOOGLE:
+        try:
+            google_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_GOOGLE), args.google_file)
+        except Exception as e:  # aba do Google não pode derrubar o build inteiro
+            print(f"AVISO: falha ao ler a aba Google Ads ({e}); seguindo sem ela.", file=sys.stderr)
 
     # Só busca cotação (rede externa) se o cliente configurou uma coluna de
     # faturamento em reais (ver REVENUE_BRL_ALIASES) — clientes sem isso não
@@ -625,7 +682,7 @@ def main():
     else:
         fx_rate, fx_rate_live = FX_RATE_FALLBACK, False
 
-    data = process(meta_rows, sales_rows, fx_rate, fx_rate_live)
+    data = process(meta_rows, sales_rows, fx_rate, fx_rate_live, google_rows)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do
     # arquivo versionado ao lado do template. Sem chamada de API no build.
@@ -642,6 +699,7 @@ def main():
     print("== build ok ==", file=sys.stderr)
     print(f"  periodo : {b['date_min']} -> {b['date_max']}", file=sys.stderr)
     print(f"  meta    : {len(data['meta'])} linhas", file=sys.stderr)
+    print(f"  google  : {len(data['gads'])} linhas · vendas atribuídas: {sum(s['gads'] for s in data['sales'])}", file=sys.stderr)
     print(f"  sales   : {len(data['sales'])} linhas (funil) · Vendas(principal): {vendas} · Fat: US$ {fat:,.2f}", file=sys.stderr)
     print(f"  out     : {args.out}", file=sys.stderr)
 

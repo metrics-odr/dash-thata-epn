@@ -27,6 +27,7 @@ from __future__ import annotations
 # o link pode visualizar" (o build lê via export CSV, somente leitura).
 SPREADSHEET_ID = ""   # ex.: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefg"
 GID_META = ""          # ex.: "111111111"  (aba Meta Ads)
+GID_GOOGLE = ""   # aba Google Ads (opcional; "" desliga a aba)
 GID_SALES = ""         # ex.: "222222222"  (aba Compradores)
 
 # ==========================================================================
