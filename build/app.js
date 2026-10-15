@@ -1,6 +1,12 @@
 "use strict";
 const DATA = JSON.parse(document.getElementById('payload').textContent);
-const META = DATA.meta, SALES = DATA.sales, B = DATA.build;
+const META = DATA.meta, GADS = DATA.gads || [], SALES = DATA.sales, B = DATA.build;
+/* Cada linha de gasto carrega: spt = parte do gasto sujeita ao "Imposto Meta" (só
+   Meta Ads), clp/spp = cliques/gasto de linhas que TÊM Page Views (Google Ads só vai
+   até Cliques, então CR/CPV/CPIC não podem diluir com ele na Visão Geral). */
+META.forEach(r=>{ r.spt=r.sp; r.clp=r.cl; r.spp=r.sp; });
+GADS.forEach(r=>{ r.spt=0; r.clp=0; r.spp=0; });
+const ALLADS = META.concat(GADS);
 const TAX = B.tax_factor || 1;
 const MAIN_PRODUCT = B.main_product || 'Produto principal';
 const MAIN_PREFIX = B.main_product_prefix || '';
@@ -67,9 +73,16 @@ const STATE = {
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
-  search:{tCamp:'', tAdset:'', tAd:''},
+  search:{tCamp:'', tAdset:'', tAd:'', ga_tCamp:'', ga_tAdset:'', ga_tAd:''},
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
+/* gasto exibido: o imposto só incide sobre a parte Meta (spt) */
+const gastoOf = o => o.sp + (taxf()-1)*(o.spt||0);
+/* canais: Meta Ads (prefixo de ids '') e Google Ads (prefixo 'ga_', página clonada em cloneGadsPage) */
+const CHN = {
+  meta:{pre:'', rows:META, flag:'meta', noPv:false, sel:{C:STATE.mSelC,A:STATE.mSelA,D:STATE.mSelAd}},
+  gads:{pre:'ga_', rows:GADS, flag:'gads', noPv:true, sel:{C:new Set(),A:new Set(),D:new Set()}},
+};
 
 /* ---------------- cotação USD -> BRL (automática) ---------------- */
 const FX_CACHE_KEY='dm_fx_usd_brl', FX_CACHE_MS=6*60*60*1000; /* 6h */
@@ -113,7 +126,8 @@ function dateActive(d){
   if(STATE.selDays.size) return STATE.selDays.has(d);
   return (!STATE.from || d>=STATE.from) && (!STATE.to || d<=STATE.to);
 }
-const metaActive  = ()=> META.filter(m=>dateActive(m.d));
+const metaActive  = ()=> ALLADS.filter(m=>dateActive(m.d));   /* gasto de todos os canais */
+const chActive    = ch=> CHN[ch].rows.filter(m=>dateActive(m.d));
 const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
 
 /* ---------------- aggregation ----------------
@@ -122,7 +136,7 @@ const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
    vendasM = compras do produto principal atribuídas ao Meta Ads (base das conversões)
    fat     = faturamento (todos os produtos do escopo)
    Obs.: na aba Meta o conjunto de vendas já é filtrado a meta==1, então vendas==vendasM. */
-function newBucket(){return {sp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0};}
+function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0};}
 /* fat = faturamento em USD (sempre, base de ROAS/CAC — não muda com a cotação).
    fatBRL = soma preferindo o valor EXATO em reais de cada venda (val_brl, quando
    a venda veio de "Faturamento Fixo"); nas vendas sem valor exato (fallback em
@@ -136,14 +150,14 @@ function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat
   if(USL_LABEL && r.prod===USL_LABEL) a.usl+=1;
   else if(DSL_LABEL && r.prod===DSL_LABEL) a.dsl+=1; }
 function derive(a){
-  const g=a.sp*taxf();
+  const g=gastoOf(a), gP=a.spp+(taxf()-1)*a.spp;   /* gP: gasto só das linhas com Page Views (spp é todo Meta) */
   return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat, fatBRL:a.fatBRL,
     cpm:a.im?g/a.im*1000:null, ctr:a.im?a.cl/a.im:null, cpc:a.cl?g/a.cl:null,
     /* HR/BR/ER = taxas de retenção do vídeo (3s / 50% / 95%) sobre Impressões —
        exibidas só na tabela de Anúncios (ver AD_HCOLS abaixo). */
     hr:a.im?a.vv3/a.im:null, br:a.im?a.vv50/a.im:null, er:a.im?a.vv95/a.im:null,
-    cpv:a.pv?g/a.pv:null, cr:a.cl?a.pv/a.cl:null,               /* CR = Page Views / Cliques */
-    cpic:a.ck?g/a.ck:null, vischk:a.pv?a.ck/a.pv:null,
+    cpv:a.pv?gP/a.pv:null, cr:a.clp?a.pv/a.clp:null,               /* CR = Page Views / Cliques */
+    cpic:a.ck?gP/a.ck:null, vischk:a.pv?a.ck/a.pv:null,
     convlp:a.pv?a.vendasM/a.pv:null,                            /* Vendas(Meta) / Page Views */
     convchk:a.ck?a.vendasM/a.ck:null,                           /* Vendas(Meta) / Checkouts */
     cac:a.vendas?g/a.vendas:null, roas:g?a.fat/g:null,
@@ -154,19 +168,19 @@ function derive(a){
 }
 function buildAgg(fS,fM,dim){
   const m={}; const get=k=>m[k]||(m[k]=newBucket());
-  fM.forEach(r=>{const a=get(r[dim]); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv; a.ck+=r.ck; a.vv3+=r.vv3; a.vv50+=r.vv50; a.vv95+=r.vv95;});
+  fM.forEach(r=>{const a=get(r[dim]); a.sp+=r.sp; a.spt+=r.spt; a.spp+=r.spp; a.clp+=r.clp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv; a.ck+=r.ck; a.vv3+=r.vv3; a.vv50+=r.vv50; a.vv95+=r.vv95;});
   fS.forEach(r=>{const a=get(r[dim]); addSales(a,r);});
   return m;
 }
 function totals(fS,fM){
   const a=newBucket();
-  fM.forEach(r=>{a.sp+=r.sp;a.im+=r.im;a.cl+=r.cl;a.pv+=r.pv;a.ck+=r.ck;a.vv3+=r.vv3;a.vv50+=r.vv50;a.vv95+=r.vv95;});
+  fM.forEach(r=>{a.sp+=r.sp;a.spt+=r.spt;a.spp+=r.spp;a.clp+=r.clp;a.im+=r.im;a.cl+=r.cl;a.pv+=r.pv;a.ck+=r.ck;a.vv3+=r.vv3;a.vv50+=r.vv50;a.vv95+=r.vv95;});
   fS.forEach(r=>addSales(a,r));
   return a;
 }
 function daily(fS,fM){
   const days={}; const g=d=>days[d]||(days[d]=Object.assign({d},newBucket()));
-  fM.forEach(r=>{if(!r.d)return; const a=g(r.d); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv; a.ck+=r.ck;});
+  fM.forEach(r=>{if(!r.d)return; const a=g(r.d); a.sp+=r.sp; a.spt+=r.spt; a.spp+=r.spp; a.clp+=r.clp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv; a.ck+=r.ck;});
   fS.forEach(r=>{if(!r.d)return; addSales(g(r.d),r);});
   return Object.values(days).sort((a,b)=>a.d<b.d?-1:1);
 }
@@ -285,9 +299,9 @@ function comboChart(id, d){
   charts[id]=new Chart(el,{
     data:{labels, datasets:[
       {type:'bar',label:'Vendas',data:d.map(x=>x.vendas),backgroundColor:cvar('--chart-vendas'),yAxisID:'y',borderRadius:3,order:3},
-      {type:'line',label:'Gasto',data:d.map(x=>+(x.sp*taxf()).toFixed(2)),borderColor:cvar('--chart-gasto'),backgroundColor:cvar('--chart-gasto'),yAxisID:'y1',borderWidth:2,pointRadius:2,tension:.25,order:2},
+      {type:'line',label:'Gasto',data:d.map(x=>+gastoOf(x).toFixed(2)),borderColor:cvar('--chart-gasto'),backgroundColor:cvar('--chart-gasto'),yAxisID:'y1',borderWidth:2,pointRadius:2,tension:.25,order:2},
       {type:'line',label:'Faturamento',data:d.map(x=>+x.fat.toFixed(2)),borderColor:cvar('--chart-faturamento'),backgroundColor:cvar('--chart-faturamento'),yAxisID:'y1',borderWidth:2,pointRadius:2,tension:.25,order:2},
-      {type:'line',label:'ROAS',data:d.map(x=>{const g=x.sp*taxf();return g?+(x.fat/g).toFixed(2):null;}),borderColor:cink(),backgroundColor:cink(),yAxisID:'y2',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,order:0},
+      {type:'line',label:'ROAS',data:d.map(x=>{const g=gastoOf(x);return g?+(x.fat/g).toFixed(2):null;}),borderColor:cink(),backgroundColor:cink(),yAxisID:'y2',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,order:0},
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{labels:{color:cink(),boxWidth:10,usePointStyle:true,font:{size:11}}},
@@ -348,11 +362,11 @@ function dimChart(id, fM, fS, dim, selSet){
   const days=[...dset].sort();
   const K=(c,dd)=>c+'\u0001'+dd, sp={}, vd={}, fat={}, fatD={};
   const usd=STATE.currency==='usd';
-  fM.forEach(r=>{if(!r.d)return; sp[K(r[dim],r.d)]=(sp[K(r[dim],r.d)]||0)+r.sp;});
+  fM.forEach(r=>{if(!r.d)return; sp[K(r[dim],r.d)]=(sp[K(r[dim],r.d)]||0)+gastoOf(r);});
   fS.forEach(r=>{if(!r.d)return; const k=K(r[dim],r.d); vd[k]=(vd[k]||0)+r.main; fat[k]=(fat[k]||0)+r.val;
     fatD[k]=(fatD[k]||0)+(usd?r.val:(r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK)));});
   const fmt=metric==='roas'?roasf:(metric==='tm'?brlNum:brl);
-  const val=(c,dd)=>{ const k=K(c,dd), s=(sp[k]||0)*taxf(), v=vd[k]||0;
+  const val=(c,dd)=>{ const k=K(c,dd), s=(sp[k]||0), v=vd[k]||0;
     if(metric==='cac') return v?+(s/v).toFixed(2):null;
     if(metric==='roas') return s?+((fat[k]||0)/s).toFixed(2):null;
     return v?+((fatD[k]||0)/v).toFixed(2):null; };
@@ -477,23 +491,23 @@ function renderFunnel(id, steps){
       <div class="secs">${secs}</div></div>`;
   }).join('');
 }
-function funnelSteps(t, tp){
+function funnelSteps(t, tp, noPv){
   const d=derive(t), P=(k)=>tp?tp[k]:null, Pd=tp?derive(tp):null;
   return [
     ['Gasto Total', brl(d.gasto), [], 'gasto', '--heat-gasto', deltaBadge(d.gasto, Pd?Pd.gasto:null, 'gasto')],
     ['Impressões', intf(t.im), [['CPM',brl(d.cpm)]], 'impr', '--c6', deltaBadge(t.im, P('im'), 'im')],
     ['Cliques', intf(t.cl), [['CPC',brl(d.cpc)],['CTR',pct(d.ctr)]], 'cl', '--c1', deltaBadge(t.cl, P('cl'), 'cl')],
-    ['Page Views', intf(t.pv), [['CPV',brl(d.cpv)],['CR',pct(d.cr)]], 'pv', '--c4', deltaBadge(t.pv, P('pv'), 'pv')],
-    ['Checkouts', intf(t.ck), [['CPIC',brl(d.cpic)],['VisCHK',pct(d.vischk)]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
+    ['Page Views', noPv?'-':intf(t.pv), [['CPV',brl(d.cpv)],['CR',pct(d.cr)]], 'pv', '--c4', deltaBadge(t.pv, P('pv'), 'pv')],
+    ['Checkouts', noPv?'-':intf(t.ck), [['CPIC',brl(d.cpic)],['VisCHK',pct(d.vischk)]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
     ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac'],['ConvCHK',pct(d.convchk)]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
     ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl)],['ConvDSL',pct(d.convDsl)]], 'usldsl', '--c5'],
     ['Faturamento', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas'],['Ticket Médio',brlEx(d.ticket,d.ticketBRL)]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];
 }
 function convCharts(id1,id2,id3,dd){
-  multiLine(id1, dd, [{label:'CPM',fn:x=>x.im?+((x.sp*taxf())/x.im*1000).toFixed(2):null,color:cvar('--chart-cpm'),fmt:'brl',axis:'L'},
+  multiLine(id1, dd, [{label:'CPM',fn:x=>x.im?+(gastoOf(x)/x.im*1000).toFixed(2):null,color:cvar('--chart-cpm'),fmt:'brl',axis:'L'},
      {label:'CTR',fn:x=>x.im?+(x.cl/x.im).toFixed(4):null,color:cvar('--chart-ctr'),fmt:'pct',axis:'R'}], {L:{fmt:'brl'},R:{fmt:'pct'}});
-  multiLine(id2, dd, [{label:'CR',fn:x=>x.cl?+(x.pv/x.cl).toFixed(4):null,color:cvar('--chart-cr'),fmt:'pct',axis:'L'},
+  multiLine(id2, dd, [{label:'CR',fn:x=>x.clp?+(x.pv/x.clp).toFixed(4):null,color:cvar('--chart-cr'),fmt:'pct',axis:'L'},
      {label:'VisCHK',fn:x=>x.pv?+(x.ck/x.pv).toFixed(4):null,color:cvar('--chart-vischk'),fmt:'pct',axis:'L'}], {L:{fmt:'pct'}});
   multiLine(id3, dd, [{label:'ConvLP',fn:x=>x.pv?+(x.vendasM/x.pv).toFixed(4):null,color:cvar('--chart-convlp'),fmt:'pct',axis:'L'},
      {label:'ConvCHK',fn:x=>x.ck?+(x.vendasM/x.ck).toFixed(4):null,color:cvar('--chart-vischk'),fmt:'pct',axis:'L'}], {L:{fmt:'pct'}});
@@ -504,7 +518,7 @@ function renderGeral(){
   const fM=metaActive(), fS=salesActive();          // fS = todas as vendas do funil
   const t=totals(fS,fM), d=derive(t);
   const pw=prevWindow();
-  const tp = pw ? totals(SALES.filter(s=>inRange(s.d,pw.from,pw.to)), META.filter(m=>inRange(m.d,pw.from,pw.to))) : null;
+  const tp = pw ? totals(SALES.filter(s=>inRange(s.d,pw.from,pw.to)), ALLADS.filter(m=>inRange(m.d,pw.from,pw.to))) : null;
   renderFunnel('geralFunnel', funnelSteps(t, tp));
   const dd=daily(fS,fM);
   convCharts('gCpmCtr','gCrVis','gConv', dd);
@@ -522,21 +536,23 @@ function renderGeral(){
 }
 
 /* ---------------- PAGE 2: Meta Ads ---------------- */
-function metaScope(ex){ let fM=metaActive(), fS=salesActive().filter(s=>s.meta);   // só Meta Ads
-  if(ex!=='C'&&STATE.mSelC.size){ fM=fM.filter(r=>STATE.mSelC.has(r.camp)); fS=fS.filter(r=>STATE.mSelC.has(r.camp)); }
-  if(ex!=='A'&&STATE.mSelA.size){ fM=fM.filter(r=>STATE.mSelA.has(r.adset)); fS=fS.filter(r=>STATE.mSelA.has(r.adset)); }
-  if(ex!=='D'&&STATE.mSelAd.size){ fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); fS=fS.filter(r=>STATE.mSelAd.has(r.ad)); }
+function metaScope(ex,ch){ ch=ch||'meta'; const C=CHN[ch], S=C.sel;
+  let fM=chActive(ch), fS=salesActive().filter(s=>s[C.flag]);   // só o canal
+  if(ex!=='C'&&S.C.size){ fM=fM.filter(r=>S.C.has(r.camp)); fS=fS.filter(r=>S.C.has(r.camp)); }
+  if(ex!=='A'&&S.A.size){ fM=fM.filter(r=>S.A.has(r.adset)); fS=fS.filter(r=>S.A.has(r.adset)); }
+  if(ex!=='D'&&S.D.size){ fM=fM.filter(r=>S.D.has(r.ad)); fS=fS.filter(r=>S.D.has(r.ad)); }
   return {fM,fS}; }
 /* Igual a metaScope() acima, mas de propósito SEM o filtro de DATA da topbar
    (usa META inteiro) — o indicativo de ativo/pausado tem que refletir a linha
    mais recente disponível na planilha, não só as do período selecionado no
    filtro de data (esse continua valendo pra tudo o mais: gasto, vendas etc.).
    Mantém o mesmo escopo de campanha/conjunto/anúncio (drill-down) das tabelas. */
-function metaScopeAllDates(ex){
-  let fM=META;
-  if(ex!=='C'&&STATE.mSelC.size){ fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
-  if(ex!=='A'&&STATE.mSelA.size){ fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
-  if(ex!=='D'&&STATE.mSelAd.size){ fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
+function metaScopeAllDates(ex,ch){
+  ch=ch||'meta'; const S=CHN[ch].sel;
+  let fM=CHN[ch].rows;
+  if(ex!=='C'&&S.C.size){ fM=fM.filter(r=>S.C.has(r.camp)); }
+  if(ex!=='A'&&S.A.size){ fM=fM.filter(r=>S.A.has(r.adset)); }
+  if(ex!=='D'&&S.D.size){ fM=fM.filter(r=>S.D.has(r.ad)); }
   return fM;
 }
 /* {nome: ativo} pra uma dimensão (camp/adset/ad). Resolvida em 2 passos:
@@ -576,36 +592,39 @@ function latestStatusByDim(fM, dim, statusField){
    combinados em AND por metaScope. Um clique aqui só mexe no conjunto da própria
    dimensão — nunca limpa a seleção das outras tabelas (ver botões ✕ Filtro,
    que limpam uma dimensão de cada vez, e o "Remover Filtros" geral, que limpa tudo). */
-function selDim(dim,key,ctrl){
-  const s={C:STATE.mSelC,A:STATE.mSelA,D:STATE.mSelAd}[dim];
+function selDim(dim,key,ctrl,ch){
+  ch=ch||'meta'; const s=CHN[ch].sel[dim];
   if(ctrl){ s.has(key)?s.delete(key):s.add(key); }
   else { const sole=s.has(key)&&s.size===1; s.clear(); if(!sole) s.add(key); }
-  renderMeta();
+  renderChannel(ch);
 }
-function metaPrevTotals(pw){
-  let fM=META.filter(m=>inRange(m.d,pw.from,pw.to));
-  let fS=SALES.filter(s=>s.meta && inRange(s.d,pw.from,pw.to));
-  if(STATE.mSelC.size){fM=fM.filter(r=>STATE.mSelC.has(r.camp));fS=fS.filter(r=>STATE.mSelC.has(r.camp));}
-  if(STATE.mSelA.size){fM=fM.filter(r=>STATE.mSelA.has(r.adset));fS=fS.filter(r=>STATE.mSelA.has(r.adset));}
-  if(STATE.mSelAd.size){fM=fM.filter(r=>STATE.mSelAd.has(r.ad));fS=fS.filter(r=>STATE.mSelAd.has(r.ad));}
+function metaPrevTotals(pw,ch){
+  ch=ch||'meta'; const C=CHN[ch], S=C.sel;
+  let fM=C.rows.filter(m=>inRange(m.d,pw.from,pw.to));
+  let fS=SALES.filter(s=>s[C.flag] && inRange(s.d,pw.from,pw.to));
+  if(S.C.size){fM=fM.filter(r=>S.C.has(r.camp));fS=fS.filter(r=>S.C.has(r.camp));}
+  if(S.A.size){fM=fM.filter(r=>S.A.has(r.adset));fS=fS.filter(r=>S.A.has(r.adset));}
+  if(S.D.size){fM=fM.filter(r=>S.D.has(r.ad));fS=fS.filter(r=>S.D.has(r.ad));}
   return totals(fS,fM);
 }
-function renderMeta(){
-  const F=metaScope(null), fM=F.fM, fS=F.fS;
+/* Renderiza a página de um canal (Meta Ads ou Google Ads) — mesma lógica, ids com prefixo. */
+function renderChannel(ch){
+  ch=ch||'meta'; const P=CHN[ch].pre, noPv=CHN[ch].noPv, SEL=CHN[ch].sel;
+  const F=metaScope(null,ch), fM=F.fM, fS=F.fS;
   const t=totals(fS,fM), d=derive(t);
-  const pw=prevWindow(); const tp = pw ? metaPrevTotals(pw) : null;
-  renderFunnel('metaFunnel', funnelSteps(t, tp));
+  const pw=prevWindow(); const tp = pw ? metaPrevTotals(pw,ch) : null;
+  renderFunnel(P+'metaFunnel', funnelSteps(t, tp, noPv));
 
   const dd=daily(fS,fM);
-  convCharts('mCpmCtr','mCrVis','mConv', dd);
-  comboChart('mCombo', dd);
+  convCharts(P+'mCpmCtr',P+'mCrVis',P+'mConv', dd);
+  comboChart(P+'mCombo', dd);
   const aggAd=buildAgg(fS,fM,'ad');
-  hbar('mContent', Object.entries(aggAd).map(([label,a])=>({label,v:STATE.currency==='usd'?a.fat:a.fatBRL})), x=>x.v, cvar('--chart-faturamento'), 10, brlNum);
-  renderProdTable('mProd', fS);
-  renderWeekdayTable('mWeek', dd);
+  hbar(P+'mContent', Object.entries(aggAd).map(([label,a])=>({label,v:STATE.currency==='usd'?a.fat:a.fatBRL})), x=>x.v, cvar('--chart-faturamento'), 10, brlNum);
+  renderProdTable(P+'mProd', fS);
+  renderWeekdayTable(P+'mWeek', dd);
 
   const dl=dd.slice().reverse();
-  renderTable({id:'tDaily', cols:DAILY_COLS,
+  renderTable({id:P+'tDaily', cols:DAILY_COLS,
     rows:dl.map(x=>{const dv=derive(x); return {k:x.d, cells:dailyCells(x,dv)};}),
     total:dailyCells(t,d,true),
     selectable:true, selSet:STATE.selDays,
@@ -625,28 +644,28 @@ function renderMeta(){
     return {rows, total:sumBuckets(entries.map(([,a])=>a))};
   }
   function totRowOf(tt){const dv=derive(tt);return Object.assign({dim:null}, metricCells(tt,dv));}
-  const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
-  const hrCamp=hierRows(buildAgg(Sc.fS,Sc.fM,'camp'),'tCamp');
-  const hrAdset=hierRows(buildAgg(Sa.fS,Sa.fM,'adset'),'tAdset');
-  const hrAd=hierRows(buildAgg(Sd.fS,Sd.fM,'ad'),'tAd');
-  renderTable({id:'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hrCamp.rows, total:totRowOf(hrCamp.total),
-    statusMap:latestStatusByDim(metaScopeAllDates('C'),'camp','cs'), selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hrAdset.rows, total:totRowOf(hrAdset.total),
-    statusMap:latestStatusByDim(metaScopeAllDates('A'),'adset','as'), selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hrAd.rows, total:totRowOf(hrAd.total),
-    statusMap:latestStatusByDim(metaScopeAllDates('D'),'ad','ds'), selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
+  const Sc=metaScope('C',ch), Sa=metaScope('A',ch), Sd=metaScope('D',ch);
+  const hrCamp=hierRows(buildAgg(Sc.fS,Sc.fM,'camp'),P+'tCamp');
+  const hrAdset=hierRows(buildAgg(Sa.fS,Sa.fM,'adset'),P+'tAdset');
+  const hrAd=hierRows(buildAgg(Sd.fS,Sd.fM,'ad'),P+'tAd');
+  renderTable({id:P+'tCamp', cols:HCOLS.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hrCamp.rows, total:totRowOf(hrCamp.total),
+    statusMap:latestStatusByDim(metaScopeAllDates('C',ch),'camp','cs'), selectable:true, selSet:SEL.C, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey),ch)});
+  renderTable({id:P+'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:(ch==='gads'?'Grupo de anúncios':'Conjunto'),big:true}:c), rows:hrAdset.rows, total:totRowOf(hrAdset.total),
+    statusMap:latestStatusByDim(metaScopeAllDates('A',ch),'adset','as'), selectable:true, selSet:SEL.A, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey),ch)});
+  renderTable({id:P+'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hrAd.rows, total:totRowOf(hrAd.total),
+    statusMap:latestStatusByDim(metaScopeAllDates('D',ch),'ad','ds'), selectable:true, selSet:SEL.Ad, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey),ch)});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra
      só as linhas selecionadas — senão cai no top-6 por gasto dentro do escopo herdado. */
-  dimChart('chCamp', Sc.fM, Sc.fS, 'camp', STATE.mSelC);
-  dimChart('chAdset', Sa.fM, Sa.fS, 'adset', STATE.mSelA);
-  dimChart('chAd', Sd.fM, Sd.fS, 'ad', STATE.mSelAd);
+  dimChart(P+'chCamp', Sc.fM, Sc.fS, 'camp', SEL.C);
+  dimChart(P+'chAdset', Sa.fM, Sa.fS, 'adset', SEL.A);
+  dimChart(P+'chAd', Sd.fM, Sd.fS, 'ad', SEL.Ad);
 
   const vendas=fS.reduce((s,r)=>s+r.main,0);
-  document.getElementById('qCount').textContent=vendas+' vendas · '+fS.length+' linhas';
+  document.getElementById(P+'qCount').textContent=vendas+' vendas · '+fS.length+' linhas';
   const rows=fS.slice().sort((a,b)=>(a.d<b.d?1:-1));
-  renderTable({id:'tQual',
+  renderTable({id:P+'tQual',
     cols:[{key:'d',label:'Data',type:'date'},{key:'nm',label:'Nome',type:'dim'},{key:'prod',label:'Produto',type:'dim',big:true},
       {key:'val',label:'Valor',type:'brlx',w:110},{key:'camp',label:'Campanha',type:'dim',big:true},{key:'ad',label:'Anúncio',type:'dim',big:true},{key:'em',label:'E‑mail',type:'dim',w:200}],
     rows:rows.map((s,i)=>({k:'s'+i, cells:{d:s.d,nm:s.nm,prod:s.prod,val:s.val,val_ex:s.val_brl,camp:s.camp,ad:s.ad,em:s.em}}))});
@@ -664,7 +683,7 @@ const AD_LINKS=DATA.ad_links||{};
 /* ---- saúde do funil: histórico da conta (todo o período, sem filtro) ----
    Funil VSL: CAC é a meta editável (âncora); CTR/CR/VisCHK/ConvCHK são pisos
    de conversão de cada etapa, estipulados a partir do histórico da conta. */
-const HIST=derive(totals(SALES,META));
+const HIST=derive(totals(SALES,ALLADS));
 const HEALTH_GOAL_KEY='dm_health_cac_goal';
 STATE.cacGoal=(()=>{ const v=parseFloat(localStorage.getItem(HEALTH_GOAL_KEY));
   if(isFinite(v)&&v>0) return v;
@@ -794,7 +813,7 @@ function renderRelBrief(){
   wrap.innerHTML = item.html || item.texto || '<div class="rel-brief-empty">Sem conteúdo.</div>';
 }
 function renderRelatorios(){
-  const fM=metaActive(), fSall=salesActive(), fSads=fSall.filter(s=>s.meta);
+  const fM=metaActive(), fSall=salesActive(), fSads=fSall.filter(s=>s.meta||s.gads);
   const tTot=totals(fSall,fM), tAds=totals(fSads,fM);
   const dvT=derive(tTot), dvA=derive(tAds);
 
@@ -934,18 +953,38 @@ function ppApply(){
   ppClose(); syncDateInputs(); renderAll();
 }
 
+/* ---------------- página Google Ads = clone da página Meta Ads ----------------
+   Mesmos blocos/ids (com prefixo 'ga_'), então a lógica é a mesma (renderChannel).
+   Google Ads só vem até Cliques: Page Views/Checkouts ficam em branco. */
+(function cloneGadsPage(){
+  const src=document.getElementById('page-meta'), dst=document.getElementById('page-gads');
+  if(!src||!dst) return;
+  let h=src.innerHTML
+    .replace(/\bid="([^"]+)"/g,'id="ga_$1"')
+    .replace(/data-chart="([^"]+)"/g,'data-chart="ga_$1"')
+    .replace(/Considera <b>apenas vendas atribuídas ao Meta Ads<\/b> \(UTM Content = Ad Name\)\./,'Considera <b>apenas vendas atribuídas ao Google Ads</b> (cruzamento por campanha + anúncio, UTM Content = Ad Name). <b>Page Views e Checkouts ainda não são importados do Google Ads</b> (aba só vai até Cliques), então CR, CPV, VisCHK e ConvCHK ficam em branco.')
+    .replace(/Conjuntos \(Ad Sets\)/g,'Grupos de anúncios')
+    .replace(/Buscar conjunto/g,'Buscar grupo')
+    .replace(/CAC por conjunto/g,'CAC por grupo de anúncios')
+    .replace(/Meta Ads/g,'Google Ads');
+  dst.innerHTML=h;
+  const n=document.getElementById('ga_mainProdNote'); if(n) n.textContent=MAIN_PRODUCT;
+  const m=document.getElementById('ga_mainProdNoteProdM'); if(m) m.textContent=MAIN_PRODUCT;
+})();
+
 /* ---------------- navigation & boot ---------------- */
 function setPage(p){ STATE.page=p;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
   document.getElementById('page-geral').classList.toggle('active',p==='geral');
   document.getElementById('page-meta').classList.toggle('active',p==='meta');
+  document.getElementById('page-gads').classList.toggle('active',p==='gads');
   document.getElementById('page-rel').classList.toggle('active',p==='rel');
-  document.getElementById('ptitle').textContent = p==='meta'?'Meta Ads':(p==='rel'?'Insights de IA':'Visão Geral');
+  document.getElementById('ptitle').textContent = p==='meta'?'Meta Ads':(p==='gads'?'Google Ads':p==='rel'?'Insights de IA':'Visão Geral');
   document.getElementById('navToggle').checked=false;
   history.replaceState(null,'', '#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorios(); else renderGeral(); }
+function renderAll(){ if(STATE.page==='meta') renderChannel('meta'); else if(STATE.page==='gads') renderChannel('gads'); else if(STATE.page==='rel') renderRelatorios(); else renderGeral(); }
 
 /* Tema ESCURO é o padrão; só fica claro se o usuário tiver escolhido 'light'. */
 function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark'); }
@@ -968,20 +1007,21 @@ document.getElementById('ppCancel').addEventListener('click',ppClose);
 document.getElementById('periodPop').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click',()=>{ if(ppIsOpen()) ppClose(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ppIsOpen()) ppClose(); });
-document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
+document.getElementById('clearBtn').addEventListener('click',()=>{ Object.values(CHN).forEach(c=>{c.sel.C.clear();c.sel.A.clear();c.sel.D.clear();}); STATE.selDays.clear(); applyPreset('mes'); });
 /* botões ✕ Filtro de cada tabela (Campanhas/Conjuntos/Anúncios): limpam a seleção
    E a busca por texto daquela tabela (e o próprio campo de input), sem afetar
    as outras tabelas nem o período selecionado. */
-function clearTableFilter(selSet,searchKey,inputId){
-  selSet.clear(); STATE.search[searchKey]=''; document.getElementById(inputId).value=''; renderMeta();
+function clearTableFilter(ch,dim,tbl,inputId){
+  CHN[ch].sel[dim].clear(); STATE.search[CHN[ch].pre+tbl]=''; document.getElementById(CHN[ch].pre+inputId).value=''; renderChannel(ch);
 }
-document.getElementById('clearCampBtn').addEventListener('click',()=>clearTableFilter(STATE.mSelC,'tCamp','searchCamp'));
-document.getElementById('clearAdsetBtn').addEventListener('click',()=>clearTableFilter(STATE.mSelA,'tAdset','searchAdset'));
-document.getElementById('clearAdBtn').addEventListener('click',()=>clearTableFilter(STATE.mSelAd,'tAd','searchAd'));
 /* busca por nome (campanha/conjunto/anúncio) — case/acento-insensitive, filtra as
    linhas da própria tabela sem mexer nas outras nem no período selecionado */
-[['searchCamp','tCamp'],['searchAdset','tAdset'],['searchAd','tAd']].forEach(([inputId,key])=>{
-  document.getElementById(inputId).addEventListener('input',function(){ STATE.search[key]=this.value; renderMeta(); });
+Object.keys(CHN).forEach(ch=>{
+  const P=CHN[ch].pre;
+  [['C','tCamp','searchCamp','clearCampBtn'],['A','tAdset','searchAdset','clearAdsetBtn'],['D','tAd','searchAd','clearAdBtn']].forEach(([dim,tbl,inp,btn])=>{
+    document.getElementById(P+btn).addEventListener('click',()=>clearTableFilter(ch,dim,tbl,inp));
+    document.getElementById(P+inp).addEventListener('input',function(){ STATE.search[P+tbl]=this.value; renderChannel(ch); });
+  });
 });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
 
@@ -1000,7 +1040,7 @@ document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 syncDateInputs();
 document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta OFF por padrão */
 syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
-setPage(location.hash==='#meta'?'meta':(location.hash==='#rel'?'rel':'geral'));
+setPage(location.hash==='#meta'?'meta':(location.hash==='#gads'?'gads':(location.hash==='#rel'?'rel':'geral')));
 
 /* auto-refresh com cache-bust ~30 min */
 setTimeout(()=>{ location.href=location.pathname+'?t='+Date.now()+location.hash; }, 30*60*1000);

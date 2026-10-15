@@ -25,6 +25,7 @@ from __future__ import annotations
 SPREADSHEET_ID = "1QX5QRvFzeyloDurQLxaXTO3c3h6bMr3wskHVe0CiyYM"
 GID_META = "1195145852"          # aba Meta Ads
 GID_SALES = "1836439885"         # aba Compradores
+GID_GOOGLE = "888044421"         # aba Google Ads (opcional; "" desliga a aba)
 
 # ==========================================================================
 # 2) REGRAS DE NEGÓCIO

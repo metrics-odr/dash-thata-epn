@@ -210,6 +210,20 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   anúncio reaproveitado está pausado) antes de mexer em `latestStatusByDim()`
   de novo.
 
+### Aba Google Ads
+Aba **Google Ads** (`gid` `888044421`, `GID_GOOGLE` em `build/config.py`; vazio desliga a
+aba), mesma planilha. Colunas: `Day · Campaign Name · Ad Group · Ad Name · Cost · Impressions ·
+Clicks` — **só vai até Cliques** (Page Views/Checkouts ficam em branco: CR, CPV, CPIC, VisCHK e
+ConvCHK aparecem "-" nessa aba). O cruzamento é a mesma lógica do Meta (campanha + `Ad Name` =
+`utm_content` de `Detalhe UTM`, na mesma aba Compradores); **Meta tem prioridade** se o par
+casar nas duas abas. Cada venda ganha `gads=1` (exclusivo com `meta=1`); upsell/downsell herda
+pelo e-mail como no Meta. O build emite `gads[]` ao lado de `meta[]`; no navegador a página
+`#gads` é um clone da página Meta (`cloneGadsPage()`, ids com prefixo `ga_`, tudo em
+`renderChannel(ch)` em `build/app.js`). Visão Geral e Relatórios somam o gasto dos dois canais;
+o toggle "Imposto Meta" só incide sobre o gasto do Meta (`spt`), e CR/CPV/CPIC da Visão Geral
+usam só linhas com Page Views (`clp`/`spp`), para o Google não diluir. Moeda do `Cost` assumida
+igual à do Meta (USD) — confirmar. `build/gerar_relatorios.py` ainda não considera o Google.
+
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
 ### Métricas do funil VSL (`build.py` + `template.html`)
