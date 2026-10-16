@@ -47,11 +47,10 @@ MAIN_PRODUCT_PREFIX = "efeito proximo nivel"   # produto "Efeito Próximo Nível
 # deixe True para contar todas as linhas como venda paga.
 COUNT_ALL_AS_PAID = False   # planilha tem coluna "Status" confiável (Completo/Aprovado/...)
 
-# Este cliente: considerar venda paga SOMENTE quando Status = "Aprovado"
-# (outros valores possíveis na planilha, como "Completo", NÃO contam mais —
-# pedido explícito do cliente). Sobrescreve o default genérico de is_paid()
-# em build/build.py (que também aceitava "completo"/"pago"/"conclu"/"ativ").
-PAID_STATUS_KEYWORDS = ("aprov",)
+# Este cliente: considerar venda paga quando Status = "Aprovado" OU "Completo"
+# (pedido explícito do cliente). Sobrescreve o default genérico de is_paid()
+# em build/build.py (que também aceitava "pago"/"conclu"/"ativ").
+PAID_STATUS_KEYWORDS = ("aprov", "complet")
 
 # Upsell/downsell pós-compra: após comprar o produto principal, o cliente
 # recebe uma oferta de "Case de Promoção" (~USD 90); se recusar, recebe uma

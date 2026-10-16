@@ -147,10 +147,10 @@ pertence a este (produto principal + par campanha/anúncio batendo com a aba Met
   de novo nessa lógica.
 - **Status de pagamento**: coluna `Status` confiável (`Completo`/`Aprovado`/...) →
   `COUNT_ALL_AS_PAID = False`, filtra por `is_paid()`. **Pedido explícito do
-  cliente**: contar como venda paga **somente** `Status = "Aprovado"` —
-  `Completo` e demais valores da coluna **não** contam mais (deixaram de ser
-  aceitos como confirmação de pagamento para este funil). Implementado via
-  `PAID_STATUS_KEYWORDS = ("aprov",)` em `build/config.py`, que sobrescreve o
+  cliente**: contar como venda paga `Status = "Aprovado"` **e** `"Completo"`
+  (antes era só Aprovado; o cliente pediu para voltar a ver as duas). Demais
+  valores da coluna não contam. Implementado via
+  `PAID_STATUS_KEYWORDS = ("aprov", "complet")` em `build/config.py`, que sobrescreve o
   default genérico de `is_paid()` em `build/build.py` (esse default segue
   aceitando `pag`/`aprov`/`paid`/`conclu`/`complet`/`ativ` para clientes que
   não definirem `PAID_STATUS_KEYWORDS`).
