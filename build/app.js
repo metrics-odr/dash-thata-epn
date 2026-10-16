@@ -653,14 +653,14 @@ function renderChannel(ch){
   renderTable({id:P+'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:(ch==='gads'?'Grupo de anúncios':'Conjunto'),big:true}:c), rows:hrAdset.rows, total:totRowOf(hrAdset.total),
     statusMap:latestStatusByDim(metaScopeAllDates('A',ch),'adset','as'), selectable:true, selSet:SEL.A, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey),ch)});
   renderTable({id:P+'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hrAd.rows, total:totRowOf(hrAd.total),
-    statusMap:latestStatusByDim(metaScopeAllDates('D',ch),'ad','ds'), selectable:true, selSet:SEL.Ad, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey),ch)});
+    statusMap:latestStatusByDim(metaScopeAllDates('D',ch),'ad','ds'), selectable:true, selSet:SEL.D, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey),ch)});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra
      só as linhas selecionadas — senão cai no top-6 por gasto dentro do escopo herdado. */
   dimChart(P+'chCamp', Sc.fM, Sc.fS, 'camp', SEL.C);
   dimChart(P+'chAdset', Sa.fM, Sa.fS, 'adset', SEL.A);
-  dimChart(P+'chAd', Sd.fM, Sd.fS, 'ad', SEL.Ad);
+  dimChart(P+'chAd', Sd.fM, Sd.fS, 'ad', SEL.D);
 
   const vendas=fS.reduce((s,r)=>s+r.main,0);
   document.getElementById(P+'qCount').textContent=vendas+' vendas · '+fS.length+' linhas';
