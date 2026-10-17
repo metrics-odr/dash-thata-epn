@@ -245,9 +245,19 @@
     .kpi .kv{font-size:19px}
     .kpis.n2 .kpi .kv{font-size:16px}
 
-    /* funil: métricas secundárias (CAC/ROAS) não ficam espremidas à direita */
-    .step{padding:10px 12px}
-    .step .secs{justify-content:flex-start; margin-left:0; width:100%}
+    /* funil compacto: métrica principal à esquerda e custo/conversão à direita, na mesma altura,
+       p/ caber todos os cards do funil na primeira dobra do celular */
+    .funnel{gap:5px}
+    .step{padding:6px 10px; flex-wrap:nowrap; gap:8px; border-radius:10px}
+    .step .step-main{flex:1 1 auto}
+    .step .m-label{font-size:10.5px; line-height:1.2}
+    .step .m-val{font-size:16px; line-height:1.2; display:inline-block; vertical-align:baseline}
+    .step .m-delta{display:inline-block; margin:0 0 0 6px; vertical-align:baseline}
+    .step .m-delta .delta{font-size:10.5px}
+    .step .secs{flex-wrap:nowrap; gap:10px; width:auto; margin-left:auto; justify-content:flex-end; text-align:right}
+    .step .secs .s-label{font-size:9.5px; margin-bottom:1px}
+    .step .secs .s-val{font-size:12.5px}
+    .s-val.s-pill{padding:1px 7px; font-size:12px}
 
     /* tabelas: menos altura fixa, sobra mais tela p/ o resto */
     .tbl-normal{max-height:220px}
