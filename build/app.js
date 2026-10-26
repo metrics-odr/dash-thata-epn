@@ -1025,7 +1025,7 @@ Object.keys(CHN).forEach(ch=>{
 });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
 
-document.title=(B.client_sub?B.client_sub+' · ':'')+(B.client_name||'Dashboard');
+document.title='EPN - Report';
 document.getElementById('logoMain').textContent=B.client_name||'—';
 document.getElementById('logoSub').textContent=B.client_sub||'';
 document.getElementById('taxLabel').textContent=B.tax_label||'Imposto';
