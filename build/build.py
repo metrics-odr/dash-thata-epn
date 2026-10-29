@@ -81,6 +81,13 @@ UPSELL_DSL_LABEL = getattr(cfg, "UPSELL_DSL_LABEL", "") or "Downsell"
 REVENUE_BRL_ALIASES = getattr(cfg, "REVENUE_BRL_ALIASES", None) or []
 FX_RATE_FALLBACK = getattr(cfg, "FX_RATE_FALLBACK", None) or 5.40
 
+# Lista de reembolsos (opcional) — planilha PRÓPRIA (outro SPREADSHEET_ID). Toda
+# venda que aparece nela (qualquer Status: Reembolsado / Pedido de reembolso /
+# Chargeback) é DESCONTADA de sales[] (e portanto de todas as abas) e passa a
+# alimentar a aba "Reembolsos" (refunds[]). Sem GID_REFUNDS a aba some.
+REFUNDS_SPREADSHEET_ID = getattr(cfg, "REFUNDS_SPREADSHEET_ID", "") or ""
+GID_REFUNDS = getattr(cfg, "GID_REFUNDS", "") or ""
+
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 BRT = timezone(timedelta(hours=-3))   # horário de Brasília (exibição)
 
@@ -267,11 +274,79 @@ def split_utm_detail(raw: str) -> tuple[str, str, str, str]:
     return parts[0], parts[1], parts[2], parts[3]
 
 
+def norm_origin(o: str) -> str:
+    """Origem normalizada (a planilha varia: 'Facebook Ads', 'Facebook-AdsAUTO ALL ...')."""
+    n = norm(o)
+    if not n:
+        return "(sem origem)"
+    if n.startswith("facebook"):
+        return "Facebook Ads"
+    if n.startswith("(sem registro"):
+        return "(sem registro)"
+    return (o or "").strip()
+
+
+def parse_date_ord(d) -> int:
+    try:
+        return datetime.strptime(d, "%Y-%m-%d").toordinal()
+    except (TypeError, ValueError):
+        return 0
+
+
+def refund_extra(rec, funnel: int) -> dict:
+    """Campos específicos do reembolso (status, oferta, país) que acompanham a venda."""
+    return {"st": rec["status"], "off": rec["offer"] or "(sem oferta)",
+            "cc": rec["country"] or "(n/d)", "tipo": rec["tipo"] or "(n/d)", "funnel": funnel}
+
+
+def parse_refunds(refund_rows):
+    """Lê a lista de reembolsos -> registros (dict). Qualquer linha da lista conta."""
+    if not refund_rows:
+        return []
+    h = header_index(
+        refund_rows[0],
+        {"date": ["data"], "status": ["status"],
+         "code": ["cod transacao", "cod. transacao", "codigo transacao"],
+         "prod": ["produto"], "tipo": ["tipo"], "name": ["comprador(a)", "comprador", "nome"],
+         "email": ["e-mail", "email"], "country": ["pais"], "orig": ["valor compra (orig"],
+         "val_usd": ["fat. liquido (usd)", "faturamento liquido (usd)"],
+         # a coluna de faturamento em reais da lista de reembolsos às vezes vem
+         # com o cabeçalho quebrado ("#REF!") — mesmo conteúdo de "Faturamento Fixo".
+         "val_brl": list(REVENUE_BRL_ALIASES) + ["#ref!"],
+         "pay": ["metodo pagto", "metodo de pagamento"], "parc": ["parcelas"],
+         "origem": ["origem"], "utm_detail": ["detalhe utm", "utm detail"],
+         "offer": ["nome oferta"]},
+        {})
+    out = []
+    for row in refund_rows[1:]:
+        if not any((c or "").strip() for c in row) or is_test_row(" ".join(str(c) for c in row)):
+            continue
+        out.append({
+            "d": parse_date(cell(row, h["date"])),
+            "status": cell(row, h["status"]) or "Reembolsado",
+            "code": cell(row, h["code"]),
+            "prod": cell(row, h["prod"]),
+            "tipo": cell(row, h["tipo"]),
+            "name": cell(row, h["name"]),
+            "email": cell(row, h["email"]),
+            "email_n": norm(cell(row, h["email"])),
+            "country": cell(row, h["country"]),
+            "orig": to_float(cell(row, h["orig"])),
+            "val_usd_raw": cell(row, h["val_usd"]),
+            "val_brl_raw": cell(row, h["val_brl"]),
+            "pay": cell(row, h["pay"]), "parc": cell(row, h["parc"]),
+            "origem": cell(row, h["origem"]),
+            "utm_detail": cell(row, h["utm_detail"]),
+            "offer": cell(row, h["offer"]),
+        })
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
 def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_live: bool = False,
-            google_rows=None):
+            google_rows=None, refund_rows=None):
     # ---------------- Aba META ADS ----------------
     # Colunas reais: Day · Campaign Name · Ad Set Name · Ad Name · Amount Spent ·
     #   Impressions · Link Clicks · Landing Page Views · Checkouts Initiated · ...
@@ -443,7 +518,13 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
          # Fallback p/ planilhas sem colunas UTM próprias: 1 campo concatenado
          # (ver split_utm_detail acima).
          "utm_detail": ["detalhe utm", "utm detail", "detalhe do utm"],
-         "status": ["status"]},
+         "status": ["status"],
+         # usados só p/ casar com a lista de reembolsos e p/ as análises da aba
+         # Reembolsos (taxa por forma de pagamento/parcelas/origem)
+         "code": ["cod transacao", "cod. transacao", "codigo transacao"],
+         "orig": ["valor compra (orig"],
+         "pay": ["metodo pagto", "metodo de pagamento"], "parc": ["parcelas"],
+         "origem": ["origem"]},
         # Fallback posicional só p/ colunas que existem nesta planilha
         # (Produto·Nome·Email·Data·Valor·Taxas·Faturamento). Sem fallback p/
         # utm_*/status: a planilha não tem essas colunas, então ausência -> vazio
@@ -505,8 +586,13 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         else:
             val = to_float(cell(row, sidx["val"]))
             val_brl_exact = None
+        det_term = _det_term if use_utm_detail else ""
         raw_rows.append({
             "d": parse_date(cell(row, sidx["created"])),
+            "code": cell(row, sidx["code"]), "orig": to_float(cell(row, sidx["orig"])),
+            "pl": det_term or "(sem posicionamento)",
+            "pay": cell(row, sidx["pay"]) or "(n/d)", "parc": cell(row, sidx["parc"]) or "(n/d)",
+            "org": norm_origin(cell(row, sidx["origem"])),
             "prod": prod, "main": main, "upsell": upsell,
             "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit, "gads_hit": gads_hit,
             "email_n": norm(cell(row, sidx["email"])),
@@ -529,27 +615,57 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
                 camp, adset, ch = r["gads_hit"][0], r["gads_hit"][1], "gads"
             else:
                 camp, adset, ch = r["sale_camp"], r["adset_own"], None
-            email_attr[r["email_n"]] = (camp, adset, r["ad"], ch)
+            email_attr[r["email_n"]] = (camp, adset, r["ad"], ch, r["pl"])
+
+    # ---------------- Lista de REEMBOLSOS ----------------
+    # Casa cada reembolso com a venda correspondente: 1º pelo código da transação;
+    # sem código na venda (vendas antigas da planilha não têm), por e-mail + produto,
+    # escolhendo a de valor/data mais próximos. A venda casada SAI de sales[] (vira
+    # refunds[]), então Vendas/CAC/Faturamento/ROAS de TODAS as abas já saem líquidos.
+    refund_recs = parse_refunds(refund_rows)
+    by_code = {r["code"]: r for r in raw_rows if r["code"]}
+    by_email = {}
+    for r in raw_rows:
+        if not r["code"] and r["email_n"]:
+            by_email.setdefault((r["email_n"], norm(r["prod"])), []).append(r)
+    n_matched = 0
+    for rec in refund_recs:
+        hit = by_code.get(rec["code"]) if rec["code"] else None
+        if hit is not None and hit.get("refund") is not None:
+            hit = None
+        if hit is None and rec["email_n"]:
+            cands = [x for x in by_email.get((rec["email_n"], norm(rec["prod"])), []) if x.get("refund") is None]
+            if cands:
+                rd = parse_date_ord(rec["d"])
+                hit = min(cands, key=lambda x: (abs(x["orig"] - rec["orig"]), abs(parse_date_ord(x["d"]) - rd)))
+        rec["hit"] = hit
+        if hit is not None:
+            hit["refund"] = rec
+            n_matched += 1
+
+    def attribution(r):
+        if r["meta_hit"] is not None:
+            return r["meta_hit"][0], r["meta_hit"][1], r["ad"], r["pl"], "meta"
+        if r["gads_hit"] is not None:
+            return r["gads_hit"][0], r["gads_hit"][1], r["ad"], r["pl"], "gads"
+        if r["upsell"] and r["email_n"] in email_attr:
+            c, a, ad_, ch_, pl_ = email_attr[r["email_n"]]
+            return c, a, ad_, pl_, ch_
+        return r["sale_camp"], r["adset_own"], r["ad"], r["pl"], None
 
     sales = []
+    refunds = []
     for r in raw_rows:
-        if r["meta_hit"] is not None:
-            camp, adset, ad_out, ch = r["meta_hit"][0], r["meta_hit"][1], r["ad"], "meta"
-        elif r["gads_hit"] is not None:
-            camp, adset, ad_out, ch = r["gads_hit"][0], r["gads_hit"][1], r["ad"], "gads"
-        elif r["upsell"] and r["email_n"] in email_attr:
-            camp, adset, ad_out, ch = email_attr[r["email_n"]]
-        else:
-            camp, adset, ad_out, ch = r["sale_camp"], r["adset_own"], r["ad"], None
+        camp, adset, ad_out, pl_out, ch = attribution(r)
         val = r["val"]
         prod_out = r["prod"] or "—"
         if r["upsell"]:
             # As 2 ofertas (upsell caro / downsell barato) vêm com o MESMO texto de
             # produto na planilha — só o valor da venda diferencia qual foi aceita.
             prod_out = UPSELL_USL_LABEL if val >= UPSELL_SPLIT_VALUE else UPSELL_DSL_LABEL
-        sales.append({
+        rec_out = {
             "d": r["d"],
-            "camp": camp, "adset": adset, "ad": ad_out,
+            "camp": camp, "adset": adset, "ad": ad_out, "pl": pl_out,
             "prod": prod_out,
             "val": round(val, 2),
             # Valor original EM REAIS (sem round-trip de cotação) quando a venda
@@ -567,10 +683,56 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             # gads=1 quando casa (campanha+anúncio) com a aba Google Ads — mesma
             # lógica do flag meta (mutuamente exclusivos; Meta tem prioridade).
             "gads": 1 if ch == "gads" else 0,
+            "org": r["org"], "pay": r["pay"], "parc": r["parc"],
             "nm": r["nm"], "em": r["em"],
-        })
+        }
+        if r.get("refund") is None:
+            sales.append(rec_out)
+        else:
+            rec_out.update(refund_extra(r["refund"], funnel=1))
+            refunds.append(rec_out)
 
-    dates = sorted({d for d in ([m["d"] for m in meta + gads if m["d"]] + [s["d"] for s in sales if s["d"]])})
+    # Reembolsos sem venda do funil correspondente (outros produtos do cliente —
+    # a planilha é de vários funis — ou vendas fora do período lido): entram só
+    # na aba Reembolsos, com a UTM da própria linha da lista.
+    for rec in refund_recs:
+        if rec["hit"] is not None:
+            continue
+        prod = rec["prod"]
+        main = is_main_product(prod)
+        upsell = (not main) and is_upsell_product(prod)
+        if use_utm_detail or rec["utm_detail"]:
+            mdm, cmp_, term, content = split_utm_detail(rec["utm_detail"])
+        else:
+            mdm = cmp_ = term = content = ""
+        meta_hit = ad_map.get((norm(cmp_), norm(content)))
+        gads_hit = None if meta_hit is not None else gad_map.get((norm(cmp_), norm(content)))
+        camp = (meta_hit or gads_hit or (cmp_, mdm))[0] or "(sem campanha)"
+        adset = (meta_hit or gads_hit or (cmp_, mdm))[1] or "(sem conjunto)"
+        if rec["email_n"] in email_attr and not cmp_:
+            camp, adset, content, ch_, term = (email_attr[rec["email_n"]][0], email_attr[rec["email_n"]][1],
+                                              email_attr[rec["email_n"]][2], email_attr[rec["email_n"]][3],
+                                              email_attr[rec["email_n"]][4])
+            meta_hit = True if ch_ == "meta" else None
+            gads_hit = True if ch_ == "gads" else None
+        if rec["val_brl_raw"]:
+            val_brl = to_float(rec["val_brl_raw"]); val = val_brl / fx_rate
+        else:
+            val = to_float(rec["val_usd_raw"]); val_brl = None
+        prod_out = prod or "—"
+        if upsell:
+            prod_out = UPSELL_USL_LABEL if val >= UPSELL_SPLIT_VALUE else UPSELL_DSL_LABEL
+        refunds.append(dict({
+            "d": rec["d"], "camp": camp, "adset": adset, "ad": content or "(sem anúncio)",
+            "pl": term or "(sem posicionamento)", "prod": prod_out,
+            "val": round(val, 2), "val_brl": round(val_brl, 2) if val_brl is not None else None,
+            "main": 1 if main else 0,
+            "meta": 1 if meta_hit else 0, "gads": 1 if gads_hit else 0,
+            "org": norm_origin(rec["origem"]), "pay": rec["pay"] or "(n/d)", "parc": rec["parc"] or "(n/d)",
+            "nm": first_last_initial(rec["name"]), "em": mask_email(rec["email"]),
+        }, **refund_extra(rec, funnel=1 if (main or upsell) else 0)))
+
+    dates = sorted({d for d in ([m["d"] for m in meta + gads if m["d"]] + [s["d"] for s in sales + refunds if s["d"]])})
     now_brt = datetime.now(BRT)
     return {
         "build": {
@@ -603,6 +765,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         "meta": meta,
         "gads": gads,
         "sales": sales,
+        "refunds": refunds,
+        "has_refunds": bool(refund_rows),
         "ad_links": ad_links,
         # Briefings do Gestor por período (gerados por IA 1x/dia via Routine e
         # salvos em build/relatorios.json). Preenchido em process()/main via
@@ -655,11 +819,25 @@ def render(data, template_path):
     return tpl
 
 
+def load_refund_rows(local=None):
+    """Lista de reembolsos (planilha própria). Falha aqui NÃO derruba o build, mas
+    avisa alto: sem a lista, os reembolsos voltam a contar como venda."""
+    if not local and not (REFUNDS_SPREADSHEET_ID and GID_REFUNDS):
+        return None
+    try:
+        return load_rows(EXPORT_URL.format(sid=REFUNDS_SPREADSHEET_ID, gid=GID_REFUNDS), local)
+    except Exception as e:
+        print(f"AVISO: falha ao ler a lista de reembolsos ({e}); reembolsos NÃO descontados neste build.",
+              file=sys.stderr)
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--meta-file")
     ap.add_argument("--sales-file")
     ap.add_argument("--google-file")
+    ap.add_argument("--refunds-file")
     ap.add_argument("--template", default="build/template.html")
     ap.add_argument("--out", default="dist/index.html")
     args = ap.parse_args()
@@ -673,6 +851,8 @@ def main():
         except Exception as e:  # aba do Google não pode derrubar o build inteiro
             print(f"AVISO: falha ao ler a aba Google Ads ({e}); seguindo sem ela.", file=sys.stderr)
 
+    refund_rows = load_refund_rows(args.refunds_file)
+
     # Só busca cotação (rede externa) se o cliente configurou uma coluna de
     # faturamento em reais (ver REVENUE_BRL_ALIASES) — clientes sem isso não
     # precisam da conversão e o build segue 100% offline como antes.
@@ -682,7 +862,7 @@ def main():
     else:
         fx_rate, fx_rate_live = FX_RATE_FALLBACK, False
 
-    data = process(meta_rows, sales_rows, fx_rate, fx_rate_live, google_rows)
+    data = process(meta_rows, sales_rows, fx_rate, fx_rate_live, google_rows, refund_rows)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do
     # arquivo versionado ao lado do template. Sem chamada de API no build.
@@ -701,6 +881,8 @@ def main():
     print(f"  meta    : {len(data['meta'])} linhas", file=sys.stderr)
     print(f"  google  : {len(data['gads'])} linhas · vendas atribuídas: {sum(s['gads'] for s in data['sales'])}", file=sys.stderr)
     print(f"  sales   : {len(data['sales'])} linhas (funil) · Vendas(principal): {vendas} · Fat: US$ {fat:,.2f}", file=sys.stderr)
+    rf = data["refunds"]
+    print(f"  reembolsos: {len(rf)} ({sum(r['funnel'] for r in rf)} do funil) · descontados de sales[]", file=sys.stderr)
     print(f"  out     : {args.out}", file=sys.stderr)
 
 

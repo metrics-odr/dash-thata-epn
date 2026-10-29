@@ -226,6 +226,18 @@ igual à do Meta (USD) — confirmar. `build/gerar_relatorios.py` também inclui
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID}`
 
+### Reembolsos (lista própria + aba "Reembolsos")
+Planilha **separada** de reembolsos (`REFUNDS_SPREADSHEET_ID`/`GID_REFUNDS` em `build/config.py`; vazio desliga).
+Colunas iguais às de Compradores (+ `Cod. transacao`, `Nome Oferta`); `Status` = Reembolsado / Pedido de
+reembolso / Chargeback — **todos** são descontados. `build/build.py` casa cada reembolso com a venda: 1º por
+**código da transação** (`Cod transacao`), e, nas vendas antigas sem código, por **e-mail + produto** (mais próximo
+em valor/data). A venda casada **sai de `sales[]`** (logo some de Vendas/CAC/Faturamento/ROAS/Ticket de todas as abas,
+inclusive `gerar_relatorios.py`) e vai para `refunds[]` com a mesma atribuição (campanha/conjunto/anúncio/posicionamento,
+upsell herdando da compra principal). Reembolsos sem venda do funil (outros produtos) entram só em `refunds[]`
+(`funnel=0`), com a UTM da própria linha. A lista não traz a data do reembolso: a aba usa a **data da compra**.
+Taxa de reembolso = reembolsos ÷ (vendas líquidas + reembolsos) do mesmo grupo (só funil; ranking exige ≥ 5 transações).
+Se a leitura da lista falhar no build, ele avisa no log e segue **sem** descontar.
+
 ### Métricas do funil VSL (`build.py` + `template.html`)
 `Gasto → Impressões → Cliques → Page Views → Checkouts → Vendas → Faturamento`
 

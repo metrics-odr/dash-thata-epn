@@ -26,6 +26,10 @@ SPREADSHEET_ID = "1QX5QRvFzeyloDurQLxaXTO3c3h6bMr3wskHVe0CiyYM"
 GID_META = "1195145852"          # aba Meta Ads
 GID_SALES = "1836439885"         # aba Compradores
 GID_GOOGLE = "888044421"         # aba Google Ads (opcional; "" desliga a aba)
+# Lista de REEMBOLSOS (opcional; planilha PRÓPRIA). Toda venda listada aqui é
+# descontada de todas as abas e alimenta a aba "Reembolsos". "" desliga.
+REFUNDS_SPREADSHEET_ID = "1v3mc-Z3lUYzGGkyIIYdK9PL3M-O6cgIBTlUWHQDboGU"
+GID_REFUNDS = "1386213779"
 
 # ==========================================================================
 # 2) REGRAS DE NEGÓCIO

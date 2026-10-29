@@ -135,6 +135,19 @@
   .pill.q{color:var(--good); border-color:#bfe6bf}
 
   .chart-box{position:relative; height:260px}
+  .rf-controls{display:flex; flex-wrap:wrap; gap:10px 18px; margin-bottom:14px}
+  .seg{display:inline-flex; align-items:center; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:3px}
+  .seg-l{font-size:11px; color:var(--muted); padding:0 8px; text-transform:uppercase; letter-spacing:.06em}
+  .seg button{border:0; background:transparent; color:var(--muted); font:inherit; font-size:12.5px; padding:6px 11px; border-radius:7px; cursor:pointer}
+  .seg button:hover{color:var(--ink)}
+  .seg button.on{background:var(--accent-blue); color:#fff}
+  .rf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rf-dimbar{display:flex; flex-wrap:wrap; gap:6px; padding:12px 15px 8px}
+  .rf-dimbar button{border:1px solid var(--border); background:transparent; color:var(--muted); font:inherit; font-size:12px; padding:5px 10px; border-radius:999px; cursor:pointer}
+  .rf-dimbar button.on{background:var(--accent-blue); border-color:var(--accent-blue); color:#fff}
+  .rf-chart{position:relative}
+  td.rf-cell{text-align:center}
+  @media (max-width:900px){ .rf-grid{grid-template-columns:minmax(0,1fr)} }
   .chart-sm{height:190px}
 
   /* Funnel */

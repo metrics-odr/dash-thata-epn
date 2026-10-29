@@ -23,6 +23,7 @@
     <div class="nav-item active" data-page="geral"><span class="ic">◱</span> Visão Geral</div>
     <div class="nav-item" data-page="meta"><span class="ic">◨</span> Meta Ads</div>
     <div class="nav-item" data-page="gads"><span class="ic">◧</span> Google Ads</div>
+    <div class="nav-item" data-page="refund" id="navRefund"><span class="ic">↺</span> Reembolsos</div>
     <div class="nav-item" data-page="rel"><span class="ic">✦</span> Insights de IA</div>
     <div class="foot">Somente leitura · atualiza ~30 min<br><span id="buildFoot"></span></div>
   </aside>
@@ -156,6 +157,29 @@
 
       <!-- ===================== PÁGINA: GOOGLE ADS (clone da Meta Ads, montado em app.js) ===================== -->
       <div class="page" id="page-gads"></div>
+
+      <!-- ===================== PÁGINA: REEMBOLSOS ===================== -->
+      <div class="page" id="page-refund">
+        <div class="rf-controls">
+          <div class="seg" id="rfScope"><span class="seg-l">Escopo</span>
+            <button data-v="all">Todos os produtos</button><button data-v="funnel">Só o funil</button></div>
+          <div class="seg" id="rfMetric"><span class="seg-l">Ranking por</span>
+            <button data-v="qtd">Quantidade</button><button data-v="taxa">Taxa de reembolso</button><button data-v="valor">Valor</button></div>
+        </div>
+        <div class="kpis n1" id="rfKpis"></div>
+        <p class="note" id="rfNote"></p>
+        <div class="grid" style="margin-top:16px">
+          <div class="card"><h3>Reembolsos por dia da compra</h3><p class="hint">Barras = reembolsos · linha = taxa de reembolso das compras daquele dia (eixo próprio). A planilha não traz a data do reembolso, só a da compra.</p><div class="chart-box"><canvas id="rfDaily"></canvas></div></div>
+        </div>
+        <h2 class="sec-title">Onde estão os reembolsos <span class="pill q" id="rfMetricPill"></span></h2>
+        <div class="grid rf-grid" id="rfGrid"></div>
+        <h2 class="sec-title">Anúncio × posicionamento</h2>
+        <div class="card" style="padding:0"><div style="padding:14px 15px 4px"><h3>Cruzamento campanha › anúncio por posicionamento</h3><p class="hint" style="margin:0">Quantidade de reembolsos (escopo atual) · intensidade da cor = volume</p></div><div class="tbl-wrap" style="max-height:420px"><table class="dt" id="rfPivot"></table></div></div>
+        <h2 class="sec-title">Ranking detalhado</h2>
+        <div class="card" style="padding:0"><div class="rf-dimbar" id="rfDimBar"></div><div class="tbl-wrap" style="max-height:420px"><table class="dt" id="rfDimTbl"></table></div></div>
+        <h2 class="sec-title">Lista de reembolsos <span class="pill q" id="rfCount"></span></h2>
+        <div class="card" style="padding:0"><div class="tbl-wrap" style="max-height:420px"><table class="dt" id="rfList"></table></div></div>
+      </div>
 
       <!-- ===================== PÁGINA 3: INSIGHTS DE IA (relatórios) ===================== -->
       <div class="page" id="page-rel">
