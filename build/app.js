@@ -200,7 +200,7 @@ function renderTable(cfg){
   let rows=cfg.rows.slice();
   if(sortState){ const {key,dir}=sortState; const c=cfg.cols.find(x=>x.key===key);
     rows.sort((a,b)=>{ let va=a.cells[key], vb=b.cells[key];
-      if(c && c.type==='dim'){ va=norm(va); vb=norm(vb); return dir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0); }
+      if(c && (c.type==='dim'||c.type==='date')){ va=norm(va); vb=norm(vb); return dir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0); }
       va=(va==null||!isFinite(va))?-Infinity:va; vb=(vb==null||!isFinite(vb))?-Infinity:vb;
       return dir==='asc'?va-vb:vb-va; }); }
   const ext={};
@@ -270,7 +270,7 @@ function statusDot(active){
 }
 /* Heatmap por coluna: cor FIXA por métrica (definida em identidade-visual.css),
    só a OPACIDADE varia com o valor (maior valor = mais vibrante). */
-const HEAT_HUE={gasto:'--heat-gasto', fat:'--heat-fat', roas:'--heat-roas', vendas:'--heat-vendas'};
+const HEAT_HUE={gasto:'--heat-gasto', fat:'--heat-fat', roas:'--heat-roas', vendas:'--heat-vendas', rate:'--heat-gasto'};
 function heat(v,lo,hi,kind){
   if(v==null||!isFinite(v)||hi===lo||!HEAT_HUE[kind]) return 'transparent';
   const t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
@@ -972,6 +972,182 @@ function ppApply(){
   const m=document.getElementById('ga_mainProdNoteProdM'); if(m) m.textContent=MAIN_PRODUCT;
 })();
 
+/* ---------------- PAGE: Reembolsos ----------------
+   REFUNDS = vendas que aparecem na lista de reembolsos (planilha própria). Elas JÁ
+   foram retiradas de SALES no build (build.py), então todas as outras abas saem
+   líquidas; aqui elas são analisadas por produto/campanha/anúncio/posicionamento etc.
+   A "taxa de reembolso" de um grupo = reembolsos / (vendas líquidas + reembolsos)
+   do MESMO grupo, contando transações do funil (principal + upsell/downsell).
+   Só há denominador para reembolsos do funil (outros produtos do cliente não têm
+   vendas carregadas). Data = data da COMPRA (a lista não traz a data do reembolso). */
+const REFUNDS = DATA.refunds || [];
+const RF = {scope:'all', metric:'qtd', dim:'prod'};
+const RF_MIN_BASE = 5;   /* taxa só ranqueia grupos com >= 5 transações (evita 1/1 = 100%) */
+const RF_STATUS_LABEL = {'Reembolsado':'Reembolsado','Pedido de reembolso':'Pedido de reembolso (aberto)','Chargeback':'Chargeback'};
+const rfPar = r => /^\d+$/.test(String(r.parc||'')) ? r.parc+'x' : (r.parc||'(n/d)');
+/* dims: key, rótulo, extrator, tem denominador de vendas? */
+const RF_DIMS = [
+  {k:'prod',  l:'Produto',           f:r=>r.prod,                 rate:true},
+  {k:'camp',  l:'Campanha',          f:r=>r.camp,                 rate:true},
+  {k:'adset', l:'Conjunto',          f:r=>r.adset,                rate:true},
+  {k:'ad',    l:'Anúncio',           f:r=>r.ad,                   rate:true},
+  {k:'campad',l:'Campanha › Anúncio',f:r=>r.camp+' › '+r.ad,      rate:true},
+  {k:'pl',    l:'Posicionamento',    f:r=>r.pl,                   rate:true},
+  {k:'org',   l:'Origem',            f:r=>r.org,                  rate:true},
+  {k:'pay',   l:'Forma de pagamento',f:r=>r.pay,                  rate:true},
+  {k:'parc',  l:'Parcelas',          f:rfPar,                     rate:true},
+  {k:'off',   l:'Oferta',            f:r=>r.off,                  rate:false},
+  {k:'st',    l:'Status',            f:r=>RF_STATUS_LABEL[r.st]||r.st, rate:false},
+];
+const rfShort=s=>{ s=String(s); return s.length>40 ? s.slice(0,18)+'…'+s.slice(-19) : s; };
+const rfScopeRows = ()=> REFUNDS.filter(r=>dateActive(r.d) && (RF.scope==='all' || r.funnel));
+const rfBrl = (usd,exact)=> STATE.currency==='usd' ? usd : (exact!=null?exact:usd*(FX_RATE||FX_FALLBACK));
+const rfSum = rows=> rows.reduce((a,r)=>{ a.usd+=r.val; a.brl+=(r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK)); return a; },{usd:0,brl:0});
+
+/* agrupa por dimensão: n, valor, base de vendas (só funil) e taxa */
+function rfGroup(dim, rows){
+  const g={}; const get=k=>g[k]||(g[k]={key:k,n:0,usd:0,brl:0,gross:0,nf:0});
+  rows.forEach(r=>{ const o=get(dim.f(r)); o.n++; o.usd+=r.val; o.brl+=(r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK)); if(r.funnel) o.nf++; });
+  if(dim.rate){
+    /* base = vendas líquidas (SALES) + reembolsos do funil, no período, do mesmo grupo */
+    SALES.forEach(s=>{ if(!dateActive(s.d)) return; const o=g[dim.f(s)]; if(o) o.gross++; });
+    REFUNDS.forEach(r=>{ if(!r.funnel || !dateActive(r.d)) return; const o=g[dim.f(r)]; if(o) o.gross++; });
+    Object.values(g).forEach(o=>{ o.rate = (o.nf && o.gross>=1) ? o.nf/o.gross : null; });
+  } else Object.values(g).forEach(o=>{ o.rate=null; });
+  return Object.values(g);
+}
+
+function rfBar(id, items, metric, fmt, color, full){
+  destroy(id); const el=document.getElementById(id); if(!el) return;
+  const mut=cmuted();
+  const lab=items.map(x=>rfShort(x.key));
+  charts[id]=new Chart(el,{type:'bar', plugins:[barLabels],
+    data:{labels:lab, datasets:[{label:'v',data:items.map(x=>x.v),backgroundColor:color,borderRadius:3,_fmt:fmt}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:56}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>items[c[0].dataIndex].key,
+        label:c=>{ const x=items[c.dataIndex]; return [fmt(c.raw), x.n+' reembolso'+(x.n===1?'':'s')+(x.gross?(' de '+x.gross+' transações'):'')]; }}}},
+      scales:{x:{beginAtZero:true,ticks:{color:mut,font:{size:9},callback:v=>fmt(v)},grid:{color:cgrid()}},
+              y:{ticks:{color:mut,font:{size:10}},grid:{display:false}}}}});
+}
+
+function rfBuildGrid(){
+  const grid=document.getElementById('rfGrid');
+  if(grid.dataset.built) return; grid.dataset.built='1';
+  grid.innerHTML=RF_DIMS.map(d=>`<div class="card"><h3>${d.l}</h3><p class="hint" id="rfH_${d.k}"></p><div class="chart-box rf-chart" id="rfB_${d.k}"><canvas id="rfCh_${d.k}"></canvas></div></div>`).join('');
+}
+
+function renderRefunds(){
+  if(!document.getElementById('rfGrid')) return;
+  rfBuildGrid();
+  document.querySelectorAll('#rfScope button').forEach(b=>b.classList.toggle('on',b.dataset.v===RF.scope));
+  document.querySelectorAll('#rfMetric button').forEach(b=>b.classList.toggle('on',b.dataset.v===RF.metric));
+  const rows=rfScopeRows();
+  const fRows=rows.filter(r=>r.funnel);
+  const sAct=salesActive();
+  const rfFunnelAll=REFUNDS.filter(r=>r.funnel && dateActive(r.d));
+  const mainRef=rfFunnelAll.filter(r=>r.main).length, mainNet=sAct.reduce((s,r)=>s+r.main,0);
+  const grossTx=sAct.length+rfFunnelAll.length, grossMain=mainNet+mainRef;
+  const sumAll=rfSum(rows), sumF=rfSum(rfFunnelAll);
+  const netFat=sAct.reduce((a,r)=>a+r.val,0), netFatBRL=sAct.reduce((a,r)=>a+(r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK)),0);
+  const grossFat=netFat+sumF.usd, grossFatBRL=netFatBRL+sumF.brl;
+  const cnt=s=>rows.filter(r=>r.st===s).length;
+  document.getElementById('rfKpis').innerHTML=[
+    {label:'Reembolsos',val:intf(rows.length),hero:true,aux:`${cnt('Reembolsado')} reembolsados · ${cnt('Pedido de reembolso')} pedidos em aberto · ${cnt('Chargeback')} chargebacks`},
+    {label:'Valor reembolsado',val:brlEx(sumAll.usd,sumAll.brl),aux:`ticket médio ${rows.length?brlEx(sumAll.usd/rows.length,sumAll.brl/rows.length):'-'}`},
+    {label:'Taxa de reembolso (funil)',val:pct(grossTx?rfFunnelAll.length/grossTx:null),aux:`${rfFunnelAll.length} de ${intf(grossTx)} transações`},
+    {label:'Taxa — produto principal',val:pct(grossMain?mainRef/grossMain:null),aux:`${mainRef} de ${intf(grossMain)} vendas de ${MAIN_PRODUCT}`},
+    {label:'% do faturamento bruto',val:pct(grossFat?sumF.usd/grossFat:null),aux:'valor reembolsado do funil ÷ faturamento antes do desconto'},
+    {label:'Faturamento líquido (já descontado)',val:brlEx(netFat,netFatBRL),aux:`bruto ${brlEx(grossFat,grossFatBRL)}`},
+  ].map(kpiCard).join('');
+  document.getElementById('rfNote').innerHTML='Toda venda desta lista (Reembolsado, Pedido de reembolso e Chargeback) já está <b>descontada</b> de Vendas, CAC, Faturamento, ROAS e Ticket em todas as abas. A <b>taxa de reembolso</b> usa as compras do período como base (reembolsos ÷ (vendas líquidas + reembolsos)) e só existe para o funil'+(RF.scope==='all'?'; reembolsos de outros produtos do cliente aparecem em Quantidade/Valor mas ficam sem taxa':'')+'.';
+
+  /* diário (coorte por data da compra) */
+  const days={}; const dd=d=>days[d]||(days[d]={d,rf:0,rff:0,tx:0});
+  rows.forEach(r=>{ if(r.d) dd(r.d).rf++; });
+  rfFunnelAll.forEach(r=>{ if(r.d){ const o=dd(r.d); o.rff++; o.tx++; } });
+  sAct.forEach(s=>{ if(s.d) dd(s.d).tx++; });
+  const dl=Object.values(days).sort((a,b)=>a.d<b.d?-1:1);
+  destroy('rfDaily'); const el=document.getElementById('rfDaily');
+  if(el){ const mut=cmuted();
+    charts.rfDaily=new Chart(el,{data:{labels:dl.map(x=>x.d.slice(5)),datasets:[
+      {type:'bar',label:'Reembolsos',data:dl.map(x=>x.rf),backgroundColor:cvar('--bad')||'#E34948',borderRadius:3,yAxisID:'y',order:2},
+      {type:'line',label:'Taxa de reembolso',data:dl.map(x=>x.tx?+(x.rff/x.tx*100).toFixed(2):null),borderColor:cink(),backgroundColor:cink(),yAxisID:'y1',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,order:1}]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{labels:{color:cink(),boxWidth:10,usePointStyle:true,font:{size:11}}},
+          tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y1'?(c.raw==null?'-':numf(c.raw)+'%'):intf(c.raw))}}},
+        scales:{x:{ticks:{color:mut,font:{size:10}},grid:{display:false}},
+          y:{position:'left',beginAtZero:true,ticks:{color:mut,font:{size:10},precision:0},grid:{color:cgrid()},title:{display:true,text:'Reembolsos',color:mut,font:{size:10}}},
+          y1:{position:'right',beginAtZero:true,ticks:{color:mut,font:{size:10},callback:v=>v+'%'},grid:{display:false},title:{display:true,text:'Taxa',color:mut,font:{size:10}}}}}});
+  }
+
+  /* cards por dimensão */
+  const M=RF.metric;
+  document.getElementById('rfMetricPill').textContent = M==='qtd'?'quantidade':M==='taxa'?('taxa · mín. '+RF_MIN_BASE+' transações'):'valor reembolsado';
+  const fmt = M==='taxa' ? (v=>numf(v*100)+'%') : M==='valor' ? (v=>brlNum(v)) : intf;
+  const color = cvar('--bad')||'#E34948';
+  RF_DIMS.forEach(d=>{
+    let items=rfGroup(d,rows);
+    let useM=M, note='';
+    if(M==='taxa' && !d.rate){ useM='qtd'; note='taxa indisponível nesta dimensão — mostrando quantidade · '; }
+    if(useM==='taxa') items=items.filter(x=>x.rate!=null && x.gross>=RF_MIN_BASE);
+    items.forEach(x=>{ x.v = useM==='taxa'?x.rate : useM==='valor'?(STATE.currency==='usd'?x.usd:x.brl) : x.n; });
+    items=items.filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,10);
+    const box=document.getElementById('rfB_'+d.k);
+    box.style.height=Math.max(120,items.length*26+34)+'px';
+    document.getElementById('rfH_'+d.k).textContent = note + (items.length?`top ${items.length}`:'sem dados no período');
+    const f = useM==='taxa' ? (v=>numf(v*100)+'%') : useM==='valor' ? (v=>brlNum(v)) : intf;
+    if(!items.length){ destroy('rfCh_'+d.k); return; }
+    rfBar('rfCh_'+d.k, items, useM, f, color);
+  });
+
+  rfPivot(rows);
+  rfDimTable(rows);
+  rfList(rows);
+}
+
+/* campanha › anúncio × posicionamento (contagem, escopo atual) */
+function rfPivot(rows){
+  const tb=document.getElementById('rfPivot'); if(!tb) return;
+  const ca={}, pl={}, cell={};
+  rows.forEach(r=>{ const a=r.camp+' › '+r.ad; ca[a]=(ca[a]||0)+1; pl[r.pl]=(pl[r.pl]||0)+1; (cell[a]||(cell[a]={}))[r.pl]=(cell[a][r.pl]||0)+1; });
+  const A=Object.entries(ca).sort((a,b)=>b[1]-a[1]).slice(0,15).map(x=>x[0]);
+  const P=Object.entries(pl).sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]);
+  let mx=1; A.forEach(a=>P.forEach(p=>{ mx=Math.max(mx,(cell[a]||{})[p]||0); }));
+  const c=hx2rgb(cvar('--heat-gasto'));
+  tb.innerHTML='<thead><tr><th class="dim">Campanha › Anúncio</th>'+P.map(p=>`<th>${esc(rfShort(p))}</th>`).join('')+'<th>Total</th></tr></thead><tbody>'+
+    A.map(a=>`<tr><td class="dim" title="${esc(a).replace(/"/g,'&quot;')}">${esc(rfShort(a))}</td>`+P.map(p=>{ const v=(cell[a]||{})[p]||0;
+      return `<td class="rf-cell" style="background:${v?`rgba(${c[0]},${c[1]},${c[2]},${(0.08+0.55*v/mx).toFixed(3)})`:'transparent'}">${v||''}</td>`; }).join('')+`<td class="rf-cell"><b>${ca[a]}</b></td></tr>`).join('')+'</tbody>';
+  if(!A.length) tb.innerHTML='<tbody><tr><td class="dim">Sem reembolsos no período</td></tr></tbody>';
+}
+
+function rfDimTable(rows){
+  const bar=document.getElementById('rfDimBar');
+  bar.innerHTML=RF_DIMS.map(d=>`<button data-k="${d.k}" class="${d.k===RF.dim?'on':''}">${d.l}</button>`).join('');
+  bar.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ RF.dim=b.dataset.k; delete STATE.sort.rfDimTbl; renderRefunds(); }));
+  const d=RF_DIMS.find(x=>x.k===RF.dim)||RF_DIMS[0];
+  const items=rfGroup(d,rows).sort((a,b)=>b.n-a.n);
+  const tot=rows.length;
+  renderTable({id:'rfDimTbl', minBig:200,
+    cols:[{key:'dim',label:d.l,type:'dim',big:true},{key:'n',label:'Reembolsos',type:'int',w:92,heat:'rate'},
+          {key:'share',label:'% dos reembolsos',type:'pct',w:112},{key:'val',label:'Valor reembolsado',type:'brlx',w:128},
+          {key:'gross',label:'Transações (base)',type:'int',w:118},{key:'rate',label:'Taxa de reembolso',type:'pct',w:120,heat:'rate'}],
+    rows:items.map(x=>({k:x.key,cells:{dim:x.key,n:x.n,share:tot?x.n/tot:null,val:x.usd,val_ex:x.brl,gross:d.rate?x.gross:null,rate:(x.rate!=null&&x.gross>=RF_MIN_BASE)?x.rate:null}})),
+    total:{dim:null,n:tot,share:tot?1:null,val:rfSum(rows).usd,val_ex:rfSum(rows).brl,gross:null,rate:null}});
+}
+
+function rfList(rows){
+  document.getElementById('rfCount').textContent=rows.length;
+  renderTable({id:'rfList', minBig:100,
+    cols:[{key:'d',label:'Data compra',type:'date',w:100},{key:'st',label:'Status',type:'dim',w:150},{key:'prod',label:'Produto',type:'dim',w:190},
+          {key:'camp',label:'Campanha',type:'dim',w:260},{key:'adset',label:'Conjunto',type:'dim',w:200},{key:'ad',label:'Anúncio',type:'dim',w:90},
+          {key:'pl',label:'Posicionamento',type:'dim',w:140},{key:'org',label:'Origem',type:'dim',w:140},{key:'pay',label:'Pagamento',type:'dim',w:130},
+          {key:'parc',label:'Parc.',type:'dim',w:60},{key:'val',label:'Valor',type:'brlx',w:100},{key:'nm',label:'Comprador',type:'dim',w:130}],
+    rows:rows.slice().sort((a,b)=>(a.d<b.d?1:-1)).map((r,i)=>({k:String(i),cells:{d:r.d,st:RF_STATUS_LABEL[r.st]||r.st,prod:r.prod,camp:r.camp,adset:r.adset,ad:r.ad,pl:r.pl,org:r.org,pay:r.pay,parc:rfPar(r),val:r.val,val_ex:r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK),nm:r.nm}}))});
+}
+document.querySelectorAll('#rfScope button').forEach(b=>b.addEventListener('click',()=>{ RF.scope=b.dataset.v; renderRefunds(); }));
+document.querySelectorAll('#rfMetric button').forEach(b=>b.addEventListener('click',()=>{ RF.metric=b.dataset.v; renderRefunds(); }));
+if(!REFUNDS.length && !DATA.has_refunds){ const n=document.getElementById('navRefund'); if(n) n.style.display='none'; }
+
 /* ---------------- navigation & boot ---------------- */
 function setPage(p){ STATE.page=p;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
@@ -979,12 +1155,13 @@ function setPage(p){ STATE.page=p;
   document.getElementById('page-meta').classList.toggle('active',p==='meta');
   document.getElementById('page-gads').classList.toggle('active',p==='gads');
   document.getElementById('page-rel').classList.toggle('active',p==='rel');
-  document.getElementById('ptitle').textContent = p==='meta'?'Meta Ads':(p==='gads'?'Google Ads':p==='rel'?'Insights de IA':'Visão Geral');
+  document.getElementById('page-refund').classList.toggle('active',p==='refund');
+  document.getElementById('ptitle').textContent = p==='meta'?'Meta Ads':(p==='gads'?'Google Ads':p==='rel'?'Insights de IA':p==='refund'?'Reembolsos':'Visão Geral');
   document.getElementById('navToggle').checked=false;
   history.replaceState(null,'', '#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderChannel('meta'); else if(STATE.page==='gads') renderChannel('gads'); else if(STATE.page==='rel') renderRelatorios(); else renderGeral(); }
+function renderAll(){ if(STATE.page==='meta') renderChannel('meta'); else if(STATE.page==='gads') renderChannel('gads'); else if(STATE.page==='rel') renderRelatorios(); else if(STATE.page==='refund') renderRefunds(); else renderGeral(); }
 
 /* Tema ESCURO é o padrão; só fica claro se o usuário tiver escolhido 'light'. */
 function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark'); }
@@ -1040,7 +1217,7 @@ document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 syncDateInputs();
 document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta OFF por padrão */
 syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
-setPage(location.hash==='#meta'?'meta':(location.hash==='#gads'?'gads':(location.hash==='#rel'?'rel':'geral')));
+setPage(location.hash==='#meta'?'meta':(location.hash==='#gads'?'gads':(location.hash==='#rel'?'rel':(location.hash==='#refund'?'refund':'geral'))));
 
 /* auto-refresh com cache-bust ~30 min */
 setTimeout(()=>{ location.href=location.pathname+'?t='+Date.now()+location.hash; }, 30*60*1000);

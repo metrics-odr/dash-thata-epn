@@ -230,7 +230,8 @@ def main():
     if args.google_file or build.GID_GOOGLE:
         google_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_GOOGLE), args.google_file)
     sales_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_SALES), sales_file)
-    data = build.process(meta_rows, sales_rows, google_rows=google_rows)
+    refund_rows = build.load_refund_rows()  # reembolsos saem das vendas, como no build
+    data = build.process(meta_rows, sales_rows, google_rows=google_rows, refund_rows=refund_rows)
     for g in data["gads"]:
         g["_gads"] = True
     # gasto/mídia de Meta + Google; vendas atribuídas a qualquer um dos dois
