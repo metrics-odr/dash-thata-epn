@@ -470,6 +470,8 @@ function prevWindow(){
 const inRange=(d,a,b)=>d&&d>=a&&d<=b;
 /* métricas em que MENOR é melhor (custo); nas demais, maior é melhor */
 const GOOD_LOW={gasto:1,cpm:1,cpc:1,cpv:1,cpic:1,cac:1};
+/* variação % discreta (fonte pequena) p/ as métricas de custo/conversão dos cards do funil */
+const deltaMini=(cur,prev,key)=>deltaBadge(cur,prev,key).replace('class="delta ','class="delta mini ');
 function deltaBadge(cur,prev,key){
   if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev)||prev===0) return '';
   const p=((cur-prev)/Math.abs(prev))*100; if(!isFinite(p)) return '';
@@ -483,7 +485,7 @@ function renderFunnel(id, steps){
     const color=s[4]?`var(${s[4]})`:'var(--accent-blue)';
     const hi=(s[3]==='gasto'||s[3]==='fat');   // valores em destaque + contorno inteiro
     const border=hi?`border-color:${color}`:`border-left-color:${color}`;
-    const secs=s[2].map(x=>`<div><span class="s-label">${x[0]}</span><span class="s-val${x[2]?' s-pill '+x[2]:''}">${x[1]}</span></div>`).join('');
+    const secs=s[2].map(x=>`<div><span class="s-label">${x[0]}</span><span class="s-val${x[2]?' s-pill '+x[2]:''}">${x[1]}</span>${x[3]?`<span class="s-d">${x[3]}</span>`:''}</div>`).join('');
     return `<div class="step" style="${border}">
       <div class="step-main"><div class="m-label">${s[0]}</div>
         <div class="m-val"${hi?` style="color:${color}"`:''}>${s[1]}</div>
@@ -492,16 +494,16 @@ function renderFunnel(id, steps){
   }).join('');
 }
 function funnelSteps(t, tp, noPv){
-  const d=derive(t), P=(k)=>tp?tp[k]:null, Pd=tp?derive(tp):null;
+  const d=derive(t), P=(k)=>tp?tp[k]:null, Pd=tp?derive(tp):null, D=(k)=>deltaMini(d[k], Pd?Pd[k]:null, k);
   return [
     ['Gasto Total', brl(d.gasto), [], 'gasto', '--heat-gasto', deltaBadge(d.gasto, Pd?Pd.gasto:null, 'gasto')],
-    ['Impressões', intf(t.im), [['CPM',brl(d.cpm)]], 'impr', '--c6', deltaBadge(t.im, P('im'), 'im')],
-    ['Cliques', intf(t.cl), [['CPC',brl(d.cpc)],['CTR',pct(d.ctr)]], 'cl', '--c1', deltaBadge(t.cl, P('cl'), 'cl')],
-    ['Page Views', noPv?'-':intf(t.pv), [['CPV',brl(d.cpv)],['CR',pct(d.cr)]], 'pv', '--c4', deltaBadge(t.pv, P('pv'), 'pv')],
-    ['Checkouts', noPv?'-':intf(t.ck), [['CPIC',brl(d.cpic)],['VisCHK',pct(d.vischk)]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
-    ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac'],['ConvCHK',pct(d.convchk)]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
-    ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl)],['ConvDSL',pct(d.convDsl)]], 'usldsl', '--c5'],
-    ['Faturamento', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas'],['Ticket Médio',brlEx(d.ticket,d.ticketBRL)]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
+    ['Impressões', intf(t.im), [['CPM',brl(d.cpm),'',D('cpm')]], 'impr', '--c6', deltaBadge(t.im, P('im'), 'im')],
+    ['Cliques', intf(t.cl), [['CPC',brl(d.cpc),'',D('cpc')],['CTR',pct(d.ctr),'',D('ctr')]], 'cl', '--c1', deltaBadge(t.cl, P('cl'), 'cl')],
+    ['Page Views', noPv?'-':intf(t.pv), [['CPV',brl(d.cpv),'',D('cpv')],['CR',pct(d.cr),'',D('cr')]], 'pv', '--c4', deltaBadge(t.pv, P('pv'), 'pv')],
+    ['Checkouts', noPv?'-':intf(t.ck), [['CPIC',brl(d.cpic),'',D('cpic')],['VisCHK',pct(d.vischk),'',D('vischk')]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
+    ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac',D('cac')],['ConvCHK',pct(d.convchk),'',D('convchk')]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
+    ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl),'',D('convUsl')],['ConvDSL',pct(d.convDsl),'',D('convDsl')]], 'usldsl', '--c5'],
+    ['Faturamento', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket,d.ticketBRL),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];
 }
 function convCharts(id1,id2,id3,dd){
