@@ -163,6 +163,13 @@
   .delta.good{color:var(--good)}
   .delta.bad{color:var(--bad)}
   .delta.flat{color:var(--muted)}
+  /* variação discreta sob custo/conversão: sem peso, fonte pequena, sem alterar a altura do card */
+  .step .secs>div{font-size:0; line-height:0}  /* sem "strut" do pai: a altura vem só das linhas de label, valor e delta */
+  .step .secs .s-label,.step .secs .s-val{line-height:1}
+  .step .secs .s-label{margin-bottom:1px}
+  .step .secs .s-val:not(.s-pill){display:block}
+  .step .secs .s-d{display:block; font-size:9px; line-height:1; margin-top:1px}
+  .delta.mini{font-size:9px; opacity:.85}
   .step .secs{display:flex; gap:16px; flex-wrap:wrap; justify-content:flex-end; text-align:right; flex-shrink:0; margin-left:auto}
   .step .secs .s-label{font-size:10.5px; color:var(--muted); display:block; margin-bottom:3px}
   .step .secs .s-val{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
@@ -270,7 +277,12 @@
     .step .secs{flex-wrap:nowrap; gap:10px; width:auto; margin-left:auto; justify-content:flex-end; text-align:right}
     .step .secs .s-label{font-size:9.5px; margin-bottom:1px}
     .step .secs .s-val{font-size:12.5px}
-    .s-val.s-pill{padding:1px 7px; font-size:12px}
+    .step .secs .s-d{margin-top:0; font-size:8.5px}
+    .step .secs .s-label{margin-bottom:0}
+    .step .secs .s-pill + .s-d{margin-top:1px}
+    .s-val.s-pill{vertical-align:top}
+    .delta.mini{font-size:8.5px}
+    .s-val.s-pill{padding:0 7px; font-size:12px; line-height:1.15}
 
     /* tabelas: menos altura fixa, sobra mais tela p/ o resto */
     .tbl-normal{max-height:220px}
