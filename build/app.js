@@ -1001,7 +1001,7 @@ const RF_DIMS = [
   {k:'off',   l:'Oferta',            f:r=>r.off,                  rate:false},
   {k:'st',    l:'Status',            f:r=>RF_STATUS_LABEL[r.st]||r.st, rate:false},
 ];
-const rfShort=s=>{ s=String(s); return s.length>40 ? s.slice(0,18)+'…'+s.slice(-19) : s; };
+const rfShort=s=>{ s=String(s); if(window.matchMedia && window.matchMedia('(max-width:900px)').matches) return s; return s.length>40 ? s.slice(0,18)+'…'+s.slice(-19) : s; };
 const rfScopeRows = ()=> REFUNDS.filter(r=>dateActive(r.d) && (RF.scope==='all' || r.funnel));
 const rfBrl = (usd,exact)=> STATE.currency==='usd' ? usd : (exact!=null?exact:usd*(FX_RATE||FX_FALLBACK));
 const rfSum = rows=> rows.reduce((a,r)=>{ a.usd+=r.val; a.brl+=(r.val_brl!=null?r.val_brl:r.val*(FX_RATE||FX_FALLBACK)); return a; },{usd:0,brl:0});

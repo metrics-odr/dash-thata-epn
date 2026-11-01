@@ -289,6 +289,12 @@
     .tbl-double{max-height:340px}
     .pair-chart{height:160px}
 
+    /* nomes completos (campanha/conjunto/anúncio etc.) no mobile: quebra em várias linhas
+       em vez de cortar com "…". Só vale em telas estreitas — desktop não muda. */
+    table.dt td.dim, table.dt tfoot td.dim{white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; word-break:break-word; line-height:1.3}
+    table.dt.rel-dt td.dim, table.dt.rel-dt th.dim{white-space:normal; overflow-wrap:anywhere; min-width:150px}
+    table.dt tbody td{vertical-align:middle}
+
     .health-card{padding:14px 15px; gap:16px}
     .health-bars{grid-template-columns:1fr}
     .rel-cards{grid-template-columns:repeat(2,1fr)}
