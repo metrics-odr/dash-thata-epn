@@ -1216,6 +1216,7 @@ document.getElementById('updated').innerHTML='Última atualização:<br>'+B.gene
 document.getElementById('buildFoot').textContent='build __BUILD_ID__';
 document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 
+{ const p=PRESETS.find(x=>x[0]==='mes'); if(p){ const [f,t]=p[2](); STATE.from=f; STATE.to=t; STATE.preset='mes'; } }  /* período padrão: Este mês */
 syncDateInputs();
 document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* imposto Meta OFF por padrão */
 syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
