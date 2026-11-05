@@ -72,7 +72,7 @@ const STATE = {
   currency: localStorage.getItem('dm_currency') || 'brl',
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
-  sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
+  sort:{tCamp:{key:'roas',dir:'desc'}, tAdset:{key:'roas',dir:'desc'}, tAd:{key:'roas',dir:'desc'}, ga_tCamp:{key:'roas',dir:'desc'}, ga_tAdset:{key:'roas',dir:'desc'}, ga_tAd:{key:'roas',dir:'desc'}}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
   search:{tCamp:'', tAdset:'', tAd:'', ga_tCamp:'', ga_tAdset:'', ga_tAd:''},
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
