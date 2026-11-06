@@ -10,6 +10,15 @@
 
 ---
 
+## 🔀 FLUXO DE GIT (regra do dono do repositório)
+
+Quando o usuário pedir qualquer mudança, **faça commit e push direto na `main`**
+— sem criar branch de feature e **sem abrir Pull Request**, a menos que o usuário
+peça explicitamente um PR. Esta regra vale mesmo que o ambiente sugira uma branch
+de desenvolvimento própria.
+
+---
+
 ## ✅ CHECKLIST DE NOVO CLIENTE
 
 Ordem para colocar um cliente novo no ar. Cada item aponta o arquivo e o marcador.
