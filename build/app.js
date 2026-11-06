@@ -1225,6 +1225,7 @@ document.getElementById('taxToggle').classList.toggle('on', STATE.tax);  /* impo
 syncCurButtons(); curRateLabel();  /* BRL é o padrão; cotação já pode vir do cache (localStorage) antes do fetch responder */
 setPage(location.hash==='#meta'?'meta':(location.hash==='#gads'?'gads':(location.hash==='#rel'?'rel':(location.hash==='#refund'?'refund':'geral'))));
 
-/* auto-refresh com cache-bust ~30 min */
-setTimeout(()=>{ location.href=location.pathname+'?t='+Date.now()+location.hash; }, 30*60*1000);
+/* Sem auto-refresh: depois de carregada, a página só atualiza pelo botão "Atualizar Dados"
+   (um reload automático desfazia os filtros que o usuário estava usando). */
+if(window.hideBootLoader) window.hideBootLoader();  /* tira a tela de loading */
 
