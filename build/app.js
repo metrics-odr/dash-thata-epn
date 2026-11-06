@@ -493,6 +493,8 @@ function renderFunnel(id, steps){
       <div class="secs">${secs}</div></div>`;
   }).join('');
 }
+/* Faturamento Líquido = Bruto menos 16% de imposto */
+const NET_F=0.84;
 function funnelSteps(t, tp, noPv){
   const d=derive(t), P=(k)=>tp?tp[k]:null, Pd=tp?derive(tp):null, D=(k)=>deltaMini(d[k], Pd?Pd[k]:null, k);
   return [
@@ -503,7 +505,8 @@ function funnelSteps(t, tp, noPv){
     ['Checkouts', noPv?'-':intf(t.ck), [['CPIC',brl(d.cpic),'',D('cpic')],['VisCHK',pct(d.vischk),'',D('vischk')]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
     ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac',D('cac')],['ConvCHK',pct(d.convchk),'',D('convchk')]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
     ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl),'',D('convUsl')],['ConvDSL',pct(d.convDsl),'',D('convDsl')]], 'usldsl', '--c5'],
-    ['Faturamento', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket,d.ticketBRL),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
+    ['Faturamento Bruto', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket,d.ticketBRL),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
+    ['Faturamento Líquido', brlEx(t.fat*NET_F,t.fatBRL*NET_F), [['ROAS',roasf(d.roas==null?null:d.roas*NET_F),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket==null?null:d.ticket*NET_F,d.ticketBRL==null?null:d.ticketBRL*NET_F),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];
 }
 function convCharts(id1,id2,id3,dd){
