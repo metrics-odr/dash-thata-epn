@@ -494,7 +494,7 @@ function renderFunnel(id, steps){
     return `<div class="step" style="${border}">
       <div class="step-main"><div class="m-label">${s[0]}</div>
         <div class="m-val"${hi?` style="color:${color}"`:''}>${s[1]}</div>
-        ${s[5]?`<div class="m-delta">${s[5]}</div>`:''}</div>
+        <div class="m-delta">${s[5]||'<span class="delta">&nbsp;</span>'}</div></div>
       <div class="secs">${secs}</div></div>`;
   }).join('');
 }
@@ -510,7 +510,7 @@ function funnelSteps(t, tp, noPv){
     ['Checkouts', noPv?'-':intf(t.ck), [['CPIC',brl(d.cpic),'',D('cpic')],['VisCHK',pct(d.vischk),'',D('vischk')]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
     ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac',D('cac')],['ConvCHK',pct(d.convchk),'',D('convchk')]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
     ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl),'',D('convUsl')],['ConvDSL',pct(d.convDsl),'',D('convDsl')]], 'usldsl', '--c5'],
-    ['Ascensão Webinar', intf(t.wbn)+' <span class="m-val-sep">/</span> '+brlEx(t.fatWbn,t.fatWbnBRL), [['Vendas WBN',intf(t.wbn),'',''],['Fat WBN',brlEx(t.fatWbn,t.fatWbnBRL),'','']], 'wbn', '--c8'],
+    ['Ascensão Webinar', intf(t.wbn), [['Fat WBN',brlEx(t.fatWbn,t.fatWbnBRL),'','']], 'wbn', '--c8'],
     ['Faturamento Bruto', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket,d.ticketBRL),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
     ['Faturamento Líquido', brlEx(t.fat*NET_F,t.fatBRL*NET_F), [['ROAS',roasf(d.roas==null?null:d.roas*NET_F),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket==null?null:d.ticket*NET_F,d.ticketBRL==null?null:d.ticketBRL*NET_F),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];

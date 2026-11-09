@@ -155,6 +155,28 @@
   .funnel{display:flex; flex-direction:column; gap:7px}
   .step{display:flex; align-items:center; justify-content:space-between; gap:14px; row-gap:8px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 15px; border-left:4px solid var(--accent-blue)}
   .step .step-main{min-width:0}
+  /* TODOS os cards do funil com a MESMA altura (a dos cards de Faturamento: rótulo + valor +
+     variação). Quem não tem variação reserva a linha (placeholder em app.js) e nada quebra de linha. */
+  @media (min-width:769px){
+    .step{flex-wrap:nowrap; height:80px; box-sizing:border-box; overflow:hidden}
+    .step .step-main{flex-shrink:0}
+    .step .secs{flex-wrap:nowrap; flex-shrink:1; min-width:0; gap:12px}
+    .funnel{container-type:inline-size}
+    /* coluna estreita: compacta fontes/espaços p/ manter 1 linha e a mesma altura */
+    @container (max-width:360px){
+      .step{padding:11px 12px; gap:8px}
+      .step .m-val{font-size:17px}
+      .step .secs{gap:8px}
+      .step .secs .s-val{font-size:12.5px}
+      .s-val.s-pill{font-size:12px; padding:2px 7px}
+    }
+    @container (max-width:320px){
+      .step{padding:11px 10px; gap:6px}
+      .step .m-val{font-size:16px}
+      .step .secs{gap:6px}
+      .step .secs .s-val{font-size:12px}
+    }
+  }
   .step .m-label{font-size:11.5px; color:var(--muted)}
   .step .m-val{font-size:20px; font-weight:700; letter-spacing:-.02em; white-space:nowrap}  /* nunca quebra a linha */
   .step .m-val .m-val-sep{color:var(--muted); font-weight:400; margin:0 2px}  /* separador "USL / DSL" no card combinado */
