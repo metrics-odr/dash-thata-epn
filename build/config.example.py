@@ -72,6 +72,11 @@ UPSELL_SPLIT_VALUE = 0.0     # valor (USD) que separa upsell de downsell: venda 
 UPSELL_USL_LABEL = ""        # ex.: "Nome do Upsell (USL)" — rótulo de exibição da oferta mais cara
 UPSELL_DSL_LABEL = ""        # ex.: "Nome do Upsell (DSL)" — rótulo de exibição da oferta mais barata
 
+# Ascensão Webinar (WBN) (OPCIONAL): produto vendido num webinário às compradoras
+# do produto principal, sem UTM (herda a atribuição pelo e-mail). Entra no
+# Faturamento/ROAS e em "Vendas WBN"/"Fat WBN". Vazio desliga.
+WBN_PRODUCT_PREFIX = ""      # ex.: "autoridade estrategica"
+
 # Coluna de faturamento alternativa, EM REAIS (OPCIONAL) — deixe a lista vazia
 # na maioria dos clientes. Use só quando a planilha do cliente tiver uma
 # coluna própria de correção manual do faturamento (ex.: "Faturamento Fixo")

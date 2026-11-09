@@ -282,6 +282,13 @@ ConvCHK (Vendas/Checkouts) · Faturamento · ROAS (Faturamento/Gasto) · Ticket 
   produto principal correspondente nos dados (ex.: fora do período lido, ou a
   própria linha principal não constava na planilha), o upsell ainda entra no
   Faturamento total (aba Visão Geral) mas fica sem campanha/anúncio (`meta=0`).
+- **Ascensão Webinar (WBN)**: webinário diário para as compradoras do EPN; o produto
+  **Autoridade Estratégica** cai na mesma planilha de Compradores, sem UTM
+  (`WBN_PRODUCT_PREFIX = "autoridade estrategica"` em `build/config.py`). Herda a
+  atribuição da compra principal pelo e-mail (como o upsell), recebe `wbn=1` em
+  `sales[]`, entra no Faturamento Bruto/Líquido e ROAS, e aparece no card
+  "Ascensão Webinar" (Vendas WBN / Faturamento WBN) e nas colunas "Vendas WBN" /
+  "Fat WBN" das tabelas. Nunca entra em Vendas/CAC/ConvCHK.
 - **Faturamento / ROAS** = soma de **todos os produtos** do funil (produto principal
   + as duas variações de Case de Promoção). **Vendas / CAC / ConvCHK / Ticket** =
   **só** o produto principal (upsell/downsell nunca entram nessas métricas, mesmo

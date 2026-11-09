@@ -136,7 +136,7 @@ const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
    vendasM = compras do produto principal atribuídas ao Meta Ads (base das conversões)
    fat     = faturamento (todos os produtos do escopo)
    Obs.: na aba Meta o conjunto de vendas já é filtrado a meta==1, então vendas==vendasM. */
-function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0};}
+function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0,wbn:0,fatWbn:0,fatWbnBRL:0};}
 /* fat = faturamento em USD (sempre, base de ROAS/CAC — não muda com a cotação).
    fatBRL = soma preferindo o valor EXATO em reais de cada venda (val_brl, quando
    a venda veio de "Faturamento Fixo"); nas vendas sem valor exato (fallback em
@@ -147,6 +147,7 @@ function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv
    nunca em "vendas"/"vendasM" (só produto principal). */
 function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat+=r.val;
   a.fatBRL += (r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK));
+  if(r.wbn){ a.wbn+=1; a.fatWbn+=r.val; a.fatWbnBRL+=(r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK)); }
   if(USL_LABEL && r.prod===USL_LABEL) a.usl+=1;
   else if(DSL_LABEL && r.prod===DSL_LABEL) a.dsl+=1; }
 function derive(a){
@@ -164,6 +165,7 @@ function derive(a){
     ticket:a.vendas?a.fat/a.vendas:null, ticketBRL:a.vendas?a.fatBRL/a.vendas:null,
     /* USL/DSL: taxa de aceite sobre quem comprou o produto principal
        (é a base de quem recebeu a oferta pós-compra). */
+    wbn:a.wbn, fatWbn:a.fatWbn, fatWbnBRL:a.fatWbnBRL,
     usl:a.usl, dsl:a.dsl, convUsl:a.vendas?a.usl/a.vendas:null, convDsl:a.vendas?a.dsl/a.vendas:null};
 }
 function buildAgg(fS,fM,dim){
@@ -193,7 +195,7 @@ function colWidth(cfg,c){ const saved=(STATE.colw[cfg.id]||{})[c.key];
   if(c.type==='dim') return c.big?300:150;
   return COL_W[c.key]||80; }
 /* larguras compactas por coluna p/ a tabela caber sem scroll lateral — a coluna de nome (big) absorve o resto (ver fitDim) */
-const COL_W={gasto:84,cpm:70,ctr:58,cr:58,cpv:70,hr:58,br:58,er:58,vischk:66,convchk:74,vendas:60,cac:78,usl:52,convUsl:66,dsl:52,convDsl:66,fat:98,ticket:84,roas:58};
+const COL_W={gasto:84,cpm:70,ctr:58,cr:58,cpv:70,hr:58,br:58,er:58,vischk:66,convchk:74,vendas:60,cac:78,usl:52,convUsl:66,dsl:52,convDsl:66,wbn:74,fatWbn:84,fat:98,ticket:84,roas:58};
 function renderTable(cfg){
   const table=document.getElementById(cfg.id); if(!table) return;
   const sortState=STATE.sort[cfg.id];
@@ -404,6 +406,8 @@ const METRIC_COLS=[
   {key:'convUsl',label:'ConvUSL',type:'pct'},
   {key:'dsl',label:'V. DSL',type:'int'},
   {key:'convDsl',label:'ConvDSL',type:'pct'},
+  {key:'wbn',label:'Vendas WBN',type:'int'},
+  {key:'fatWbn',label:'Fat WBN',type:'brlx'},
   {key:'fat',label:'Faturamento',type:'brlx',heat:'fat'},  /* heatmap verde */
   {key:'ticket',label:'Ticket',type:'brlx'},
   {key:'roas',label:'ROAS',type:'roas',heat:'roas'},      /* heatmap amarelo */
@@ -421,6 +425,7 @@ const AD_HCOLS=(()=>{ const cols=HCOLS.slice(); const i=cols.findIndex(c=>c.key=
 function metricCells(x,d){
   return {gasto:d.gasto, cpm:d.cpm, hr:d.hr, br:d.br, er:d.er, ctr:d.ctr, cr:d.cr, cpv:d.cpv, vischk:d.vischk, convchk:d.convchk,
     vendas:x.vendas, cac:d.cac, usl:x.usl, convUsl:d.convUsl, dsl:x.dsl, convDsl:d.convDsl,
+    wbn:x.wbn, fatWbn:x.fatWbn, fatWbn_ex:x.fatWbnBRL,
     fat:x.fat, fat_ex:d.fatBRL, ticket:d.ticket, ticket_ex:d.ticketBRL, roas:d.roas};
 }
 function dailyCells(x,d,isTotal){
@@ -505,6 +510,7 @@ function funnelSteps(t, tp, noPv){
     ['Checkouts', noPv?'-':intf(t.ck), [['CPIC',brl(d.cpic),'',D('cpic')],['VisCHK',pct(d.vischk),'',D('vischk')]], 'ck', '--c3', deltaBadge(t.ck, P('ck'), 'ck')],
     ['Vendas', intf(t.vendas), [['CAC',brl(d.cac),'cac',D('cac')],['ConvCHK',pct(d.convchk),'',D('convchk')]], 'vendas', '--c7', deltaBadge(t.vendas, P('vendas'), 'vendas')],
     ['Vendas USL / DSL', intf(t.usl)+' <span class="m-val-sep">/</span> '+intf(t.dsl), [['ConvUSL',pct(d.convUsl),'',D('convUsl')],['ConvDSL',pct(d.convDsl),'',D('convDsl')]], 'usldsl', '--c5'],
+    ['Ascensão Webinar', intf(t.wbn)+' <span class="m-val-sep">/</span> '+brlEx(t.fatWbn,t.fatWbnBRL), [['Vendas WBN',intf(t.wbn),'',''],['Fat WBN',brlEx(t.fatWbn,t.fatWbnBRL),'','']], 'wbn', '--c8'],
     ['Faturamento Bruto', brlEx(t.fat,t.fatBRL), [['ROAS',roasf(d.roas),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket,d.ticketBRL),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
     ['Faturamento Líquido', brlEx(t.fat*NET_F,t.fatBRL*NET_F), [['ROAS',roasf(d.roas==null?null:d.roas*NET_F),'roas',D('roas')],['Ticket Médio',brlEx(d.ticket==null?null:d.ticket*NET_F,d.ticketBRL==null?null:d.ticketBRL*NET_F),'',D('ticket')]], 'fat', '--heat-fat', deltaBadge(t.fat, P('fat'), 'fat')],
   ];

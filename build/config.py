@@ -70,6 +70,13 @@ UPSELL_SPLIT_VALUE = 65.0                    # USD: venda >= 65 = USL (~90) · <
 UPSELL_USL_LABEL = "Case de Promoção (USL)"  # oferta inicial, mais cara
 UPSELL_DSL_LABEL = "Case de Promoção (DSL)"  # oferta de recusa, mais barata
 
+# Ascensão Webinar (WBN): webinário diário para as compradoras do produto
+# principal. As vendas caem na mesma planilha de Compradores, sem UTM (herdam a
+# atribuição da compra principal pelo e-mail, como o upsell). Entram no
+# Faturamento Bruto/Líquido e ROAS, e em "Vendas WBN"/"Fat WBN" — nunca em
+# Vendas/CAC/Ticket. "" desliga.
+WBN_PRODUCT_PREFIX = "autoridade estrategica"   # produto "Autoridade Estratégica"
+
 # Este cliente adicionou uma coluna própria de correção manual do faturamento
 # ("Faturamento Fixo", em REAIS) na aba Compradores, substituindo o uso da
 # coluna "Fat. líquido (USD)" (que tinha o bug do "Fat. líquido (BRL)" com

@@ -71,6 +71,9 @@ UPSELL_PRODUCT_PREFIX = getattr(cfg, "UPSELL_PRODUCT_PREFIX", "") or ""
 UPSELL_SPLIT_VALUE = getattr(cfg, "UPSELL_SPLIT_VALUE", 0.0) or 0.0
 UPSELL_USL_LABEL = getattr(cfg, "UPSELL_USL_LABEL", "") or "Upsell"
 UPSELL_DSL_LABEL = getattr(cfg, "UPSELL_DSL_LABEL", "") or "Downsell"
+# Ascensão Webinar (WBN): produto vendido num webinário diário às compradoras do
+# produto principal. Cai na mesma planilha de vendas, sem UTM. "" desliga.
+WBN_PRODUCT_PREFIX = getattr(cfg, "WBN_PRODUCT_PREFIX", "") or ""
 # Coluna de faturamento alternativa, EM REAIS (correção manual do cliente sobre
 # uma coluna de faturamento quebrada) — opcional. Quando configurada, tem
 # prioridade sobre a coluna "val" (dólar) padrão, mas como todo o cálculo
@@ -213,6 +216,10 @@ def is_main_product(prod: str) -> bool:
 
 def is_upsell_product(prod: str) -> bool:
     return bool(UPSELL_PRODUCT_PREFIX) and norm(prod).startswith(UPSELL_PRODUCT_PREFIX)
+
+
+def is_wbn_product(prod: str) -> bool:
+    return bool(WBN_PRODUCT_PREFIX) and norm(prod).startswith(WBN_PRODUCT_PREFIX)
 
 
 # ----- Máscara de PII (a página publicada é pública) ----- #
@@ -559,7 +566,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         adset_own = (det_medium if use_utm_detail else cell(row, sidx["utm_medium"])) or "(sem conjunto)"
         main = is_main_product(prod)
         upsell = (not main) and is_upsell_product(prod)
-        if not (main or upsell):
+        wbn = (not main) and (not upsell) and is_wbn_product(prod)
+        if not (main or upsell or wbn):
             continue
         # Match com o Meta = campanha + anúncio juntos (o mesmo Ad Name se repete
         # entre campanhas; casar só pelo anúncio atribui a venda à campanha errada).
@@ -593,7 +601,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "pl": det_term or "(sem posicionamento)",
             "pay": cell(row, sidx["pay"]) or "(n/d)", "parc": cell(row, sidx["parc"]) or "(n/d)",
             "org": norm_origin(cell(row, sidx["origem"])),
-            "prod": prod, "main": main, "upsell": upsell,
+            "prod": prod, "main": main, "upsell": upsell, "wbn": wbn,
             "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit, "gads_hit": gads_hit,
             "email_n": norm(cell(row, sidx["email"])),
             "val": val,
@@ -648,7 +656,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             return r["meta_hit"][0], r["meta_hit"][1], r["ad"], r["pl"], "meta"
         if r["gads_hit"] is not None:
             return r["gads_hit"][0], r["gads_hit"][1], r["ad"], r["pl"], "gads"
-        if r["upsell"] and r["email_n"] in email_attr:
+        if (r["upsell"] or r["wbn"]) and r["email_n"] in email_attr:
             c, a, ad_, ch_, pl_ = email_attr[r["email_n"]]
             return c, a, ad_, pl_, ch_
         return r["sale_camp"], r["adset_own"], r["ad"], r["pl"], None
@@ -677,6 +685,9 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             # Vendas/CAC/ConvCHK/Ticket são só do produto principal — upsell/downsell
             # entram no Faturamento/ROAS (val acima) mas não em "main".
             "main": 1 if r["main"] else 0,
+            # wbn=1: venda do webinário (Ascensão Webinar). Entra no Faturamento/ROAS
+            # e na contagem "Vendas WBN"; nunca em Vendas/CAC/Ticket (só principal).
+            "wbn": 1 if r["wbn"] else 0,
             # meta=1 quando a venda (ou, p/ upsell/downsell, a compra do produto
             # principal do mesmo comprador) casa com campanha+anúncio real do Meta.
             "meta": 1 if ch == "meta" else 0,
@@ -701,6 +712,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         prod = rec["prod"]
         main = is_main_product(prod)
         upsell = (not main) and is_upsell_product(prod)
+        wbn = (not main) and (not upsell) and is_wbn_product(prod)
         if use_utm_detail or rec["utm_detail"]:
             mdm, cmp_, term, content = split_utm_detail(rec["utm_detail"])
         else:
@@ -726,11 +738,11 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "d": rec["d"], "camp": camp, "adset": adset, "ad": content or "(sem anúncio)",
             "pl": term or "(sem posicionamento)", "prod": prod_out,
             "val": round(val, 2), "val_brl": round(val_brl, 2) if val_brl is not None else None,
-            "main": 1 if main else 0,
+            "main": 1 if main else 0, "wbn": 1 if wbn else 0,
             "meta": 1 if meta_hit else 0, "gads": 1 if gads_hit else 0,
             "org": norm_origin(rec["origem"]), "pay": rec["pay"] or "(n/d)", "parc": rec["parc"] or "(n/d)",
             "nm": first_last_initial(rec["name"]), "em": mask_email(rec["email"]),
-        }, **refund_extra(rec, funnel=1 if (main or upsell) else 0)))
+        }, **refund_extra(rec, funnel=1 if (main or upsell or wbn) else 0)))
 
     dates = sorted({d for d in ([m["d"] for m in meta + gads if m["d"]] + [s["d"] for s in sales + refunds if s["d"]])})
     now_brt = datetime.now(BRT)
