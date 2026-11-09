@@ -281,6 +281,25 @@ def split_utm_detail(raw: str) -> tuple[str, str, str, str]:
     return parts[0], parts[1], parts[2], parts[3]
 
 
+def norm_adset(s: str | None) -> str:
+    """Nome de conjunto normalizado (minúsculas, sem acento, espaços colapsados)."""
+    return re.sub(r"\s+", " ", norm(s))
+
+
+def resolve_hit(amap, key, adset_utm):
+    """(campanha, conjunto) reais do Meta/Google para uma venda.
+
+    O mesmo anúncio (ex. "AD52-g2") roda em VÁRIOS conjuntos da mesma campanha,
+    então campanha+anúncio não basta: o conjunto vem da UTM da venda. Só se o
+    conjunto da UTM não existir entre os candidatos (nome divergente) cai no
+    primeiro candidato, como antes."""
+    cands = amap.get(key)
+    if not cands:
+        return None
+    hit = cands.get(norm_adset(adset_utm))
+    return hit if hit is not None else next(iter(cands.values()))
+
+
 def norm_origin(o: str) -> str:
     """Origem normalizada (a planilha varia: 'Facebook Ads', 'Facebook-AdsAUTO ALL ...')."""
     n = norm(o)
@@ -423,8 +442,9 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         adset = cell(row, midx["adset"]) or "(sem conjunto)"
         ad = cell(row, midx["ad"]) or "(sem anúncio)"
         key = (norm(camp), norm(ad))
-        if key not in ad_map:
-            ad_map[key] = (camp, adset)
+        # Guarda TODOS os conjuntos em que o par campanha+anúncio roda (o mesmo
+        # anúncio costuma rodar em vários conjuntos da mesma campanha).
+        ad_map.setdefault(key, {}).setdefault(norm_adset(adset), (camp, adset))
         link = cell(row, midx["link"])
         if link and ad not in ad_links:
             ad_links[ad] = link
@@ -474,8 +494,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         adset = cell(row, gidx["adset"]) or "(sem grupo)"
         ad = cell(row, gidx["ad"]) or "(sem anúncio)"
         gkey = (norm(camp), norm(ad))
-        if gkey not in gad_map:
-            gad_map[gkey] = (camp, adset)
+        gad_map.setdefault(gkey, {}).setdefault(norm_adset(adset), (camp, adset))
         gads.append({
             "d": parse_date(cell(row, gidx["day"])),
             "camp": camp, "adset": adset, "ad": ad,
@@ -572,9 +591,9 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         # Match com o Meta = campanha + anúncio juntos (o mesmo Ad Name se repete
         # entre campanhas; casar só pelo anúncio atribui a venda à campanha errada).
         meta_key = (norm(sale_camp), norm(ad))
-        meta_hit = ad_map.get(meta_key)
+        meta_hit = resolve_hit(ad_map, meta_key, adset_own)
         # Só tenta o Google se não casou com o Meta (Meta tem prioridade).
-        gads_hit = None if meta_hit is not None else gad_map.get(meta_key)
+        gads_hit = None if meta_hit is not None else resolve_hit(gad_map, meta_key, adset_own)
         val_brl_raw = cell(row, sidx["val_brl"]) if sidx.get("val_brl") is not None else ""
         if val_brl_raw:
             # Coluna de correção do cliente vem em REAIS -> converte pra USD
@@ -717,8 +736,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             mdm, cmp_, term, content = split_utm_detail(rec["utm_detail"])
         else:
             mdm = cmp_ = term = content = ""
-        meta_hit = ad_map.get((norm(cmp_), norm(content)))
-        gads_hit = None if meta_hit is not None else gad_map.get((norm(cmp_), norm(content)))
+        meta_hit = resolve_hit(ad_map, (norm(cmp_), norm(content)), mdm)
+        gads_hit = None if meta_hit is not None else resolve_hit(gad_map, (norm(cmp_), norm(content)), mdm)
         camp = (meta_hit or gads_hit or (cmp_, mdm))[0] or "(sem campanha)"
         adset = (meta_hit or gads_hit or (cmp_, mdm))[1] or "(sem conjunto)"
         if rec["email_n"] in email_attr and not cmp_:
