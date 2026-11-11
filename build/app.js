@@ -322,8 +322,8 @@ function multiLine(id, d, series, opts){
   const datasets=series.map(s=>({label:s.label,data:d.map(s.fn),borderColor:s.color,backgroundColor:s.color,
     yAxisID:s.axis==='R'?'y1':'y',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,_fmt:FMT[s.fmt]||numf}));
   const scales={x:{ticks:{color:mut,font:{size:9}},grid:{display:false}},
-    y:{position:'left',ticks:{color:mut,font:{size:9},callback:v=>(FMT[opts.L.fmt]||numf)(v)},grid:{color:cgrid()},grace:'10%'}};
-  if(useR) scales.y1={position:'right',grid:{display:false},ticks:{color:mut,font:{size:9},callback:v=>(FMT[opts.R.fmt]||numf)(v)},grace:'10%'};
+    y:{position:'left',ticks:{color:mut,font:{size:9},callback:v=>(FMT[opts.L.fmt]||numf)(v)},grid:{color:cgrid()},grace:'10%',...(opts.L.fmt==='pct'?{min:0}:{})}};
+  if(useR) scales.y1={position:'right',grid:{display:false},...(opts.R.fmt==='pct'?{min:0}:{}),ticks:{color:mut,font:{size:9},callback:v=>(FMT[opts.R.fmt]||numf)(v)},grace:'10%'};
   charts[id]=new Chart(el,{type:'line',data:{labels,datasets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{labels:{color:cink(),boxWidth:10,usePointStyle:true,font:{size:10}}},
@@ -527,8 +527,8 @@ function convCharts(id1,id2,id3,dd){
      {label:'CTR',fn:x=>x.im?+(x.cl/x.im).toFixed(4):null,color:cvar('--chart-ctr'),fmt:'pct',axis:'R'}], {L:{fmt:'brl'},R:{fmt:'pct'}});
   multiLine(id2, dd, [{label:'CR',fn:x=>x.clp?+(x.pv/x.clp).toFixed(4):null,color:cvar('--chart-cr'),fmt:'pct',axis:'L'},
      {label:'VisCHK',fn:x=>x.pv?+(x.ck/x.pv).toFixed(4):null,color:cvar('--chart-vischk'),fmt:'pct',axis:'L'}], {L:{fmt:'pct'}});
-  multiLine(id3, dd, [{label:'ConvLP',fn:x=>x.pv?+(x.vendasM/x.pv).toFixed(4):null,color:cvar('--chart-convlp'),fmt:'pct',axis:'L'},
-     {label:'ConvCHK',fn:x=>x.ck?+(x.vendasM/x.ck).toFixed(4):null,color:cvar('--chart-vischk'),fmt:'pct',axis:'L'}], {L:{fmt:'pct'}});
+  multiLine(id3, dd, [{label:'ConvLP',fn:x=>x.pv?+(x.vendasM/x.pv).toFixed(4):null,color:cvar('--chart-convlp'),fmt:'pct',axis:'R'},
+     {label:'ConvCHK',fn:x=>x.ck?+(x.vendasM/x.ck).toFixed(4):null,color:cvar('--chart-vischk'),fmt:'pct',axis:'L'}], {L:{fmt:'pct'},R:{fmt:'pct'}});  /* ConvLP (~1-3%) em eixo próprio: na escala do ConvCHK (~20%+) ficava colada no zero */
 }
 
 /* ---------------- PAGE 1: Visão Geral ---------------- */
