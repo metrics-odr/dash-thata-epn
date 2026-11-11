@@ -468,6 +468,13 @@ function renderWeekdayTable(id, dd){
 /* ---- comparativo período atual vs período anterior de MESMO tamanho ---- */
 function prevWindow(){
   if(!STATE.from||!STATE.to) return null;
+  /* "Este mês" compara com o MÊS PASSADO INTEIRO; demais períodos (últimos X dias etc.)
+     comparam com a janela imediatamente anterior de mesmo tamanho */
+  if(STATE.preset==='mes' && !STATE.selDays.size){
+    const [y,m]=STATE.from.split('-').map(Number);
+    const f=new Date(y,m-2,1), l=new Date(y,m-1,0);
+    return {from:dstr(f), to:dstr(l), span:l.getDate()};
+  }
   const span=Math.round((new Date(STATE.to+'T00:00:00')-new Date(STATE.from+'T00:00:00'))/86400000)+1;
   if(!(span>=1)) return null;
   return {from:addDays(STATE.from,-span), to:addDays(STATE.from,-1), span};
