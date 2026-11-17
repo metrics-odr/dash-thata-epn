@@ -443,3 +443,18 @@
   .rel-brief .tag.corte{color:var(--bad); background:color-mix(in srgb,var(--bad) 14%,transparent)}
   .rel-brief .tag.observar{color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%,transparent)}
   .rel-brief-empty{color:var(--muted); font-size:13px}
+
+  /* Upsell / Downsell / Webinar (Visão Geral) */
+  .pos-title{margin:4px 15px 8px; font-size:14px}
+  .pos-grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:12px; padding:0 15px 15px; align-items:start}
+  .pos-cards{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .pos-card{height:auto !important; min-height:64px}
+  .pos-donut{padding:12px 14px}
+  .pos-donut .chart-box{height:170px}
+  .pos-legend{display:flex; flex-direction:column; gap:5px; margin-top:8px; font-size:12px}
+  .pos-leg{display:flex; align-items:center; gap:6px}
+  .pos-leg i{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+  .pos-leg .pl-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted)}
+  .pos-leg b{font-variant-numeric:tabular-nums}
+  .pos-leg .pl-pct{width:52px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums}
+  @media(max-width:1300px){.pos-grid{grid-template-columns:1fr}}

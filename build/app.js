@@ -136,7 +136,7 @@ const salesActive = ()=> SALES.filter(s=>dateActive(s.d));
    vendasM = compras do produto principal atribuídas ao Meta Ads (base das conversões)
    fat     = faturamento (todos os produtos do escopo)
    Obs.: na aba Meta o conjunto de vendas já é filtrado a meta==1, então vendas==vendasM. */
-function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0,wbn:0,fatWbn:0,fatWbnBRL:0};}
+function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv50:0,vv95:0,vendas:0,vendasM:0,fat:0,fatBRL:0,usl:0,dsl:0,fatUsl:0,fatUslBRL:0,fatDsl:0,fatDslBRL:0,wbn:0,fatWbn:0,fatWbnBRL:0};}
 /* fat = faturamento em USD (sempre, base de ROAS/CAC — não muda com a cotação).
    fatBRL = soma preferindo o valor EXATO em reais de cada venda (val_brl, quando
    a venda veio de "Faturamento Fixo"); nas vendas sem valor exato (fallback em
@@ -148,8 +148,9 @@ function newBucket(){return {sp:0,spt:0,spp:0,clp:0,im:0,cl:0,pv:0,ck:0,vv3:0,vv
 function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat+=r.val;
   a.fatBRL += (r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK));
   if(r.wbn){ a.wbn+=1; a.fatWbn+=r.val; a.fatWbnBRL+=(r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK)); }
-  if(USL_LABEL && r.prod===USL_LABEL) a.usl+=1;
-  else if(DSL_LABEL && r.prod===DSL_LABEL) a.dsl+=1; }
+  const vb=(r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK));
+  if(USL_LABEL && r.prod===USL_LABEL){ a.usl+=1; a.fatUsl+=r.val; a.fatUslBRL+=vb; }
+  else if(DSL_LABEL && r.prod===DSL_LABEL){ a.dsl+=1; a.fatDsl+=r.val; a.fatDslBRL+=vb; } }
 function derive(a){
   const g=gastoOf(a), gP=a.spp+(taxf()-1)*a.spp;   /* gP: gasto só das linhas com Page Views (spp é todo Meta) */
   return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat, fatBRL:a.fatBRL,
@@ -166,7 +167,8 @@ function derive(a){
     /* USL/DSL: taxa de aceite sobre quem comprou o produto principal
        (é a base de quem recebeu a oferta pós-compra). */
     wbn:a.wbn, fatWbn:a.fatWbn, fatWbnBRL:a.fatWbnBRL,
-    usl:a.usl, dsl:a.dsl, convUsl:a.vendas?a.usl/a.vendas:null, convDsl:a.vendas?a.dsl/a.vendas:null};
+    usl:a.usl, dsl:a.dsl, convUsl:a.vendas?a.usl/a.vendas:null, convDsl:a.vendas?a.dsl/a.vendas:null,
+    convWbn:a.vendas?a.wbn/a.vendas:null};
 }
 function buildAgg(fS,fM,dim){
   const m={}; const get=k=>m[k]||(m[k]=newBucket());
@@ -531,6 +533,37 @@ function convCharts(id1,id2,id3,dd){
      {label:'ConvCHK',fn:x=>x.ck?+(x.vendasM/x.ck).toFixed(4):null,color:cvar('--chart-vischk'),fmt:'pct',axis:'L'}], {L:{fmt:'pct'},R:{fmt:'pct'}});  /* ConvLP (~1-3%) em eixo próprio: na escala do ConvCHK (~20%+) ficava colada no zero */
 }
 
+/* ---------------- Upsell / Downsell / Webinar (Visão Geral) ----------------
+   Conversão = vendas do produto ÷ vendas do produto principal (EPN) no período.
+   Donut = composição do faturamento (principal = total − USL − DSL − WBN). */
+function renderPosVenda(t, tp){
+  const d=derive(t), dp=tp?derive(tp):null, el=document.getElementById('posGrid'); if(!el) return;
+  const P=(k)=>tp?tp[k]:null;
+  const items=[
+    {k:'usl', name:'Upsell',   cls:'--c1', n:t.usl, fat:t.fatUsl, fatB:t.fatUslBRL, pn:P('usl'), pf:P('fatUsl'), conv:d.convUsl, pconv:dp&&dp.convUsl},
+    {k:'dsl', name:'Downsell', cls:'--c3', n:t.dsl, fat:t.fatDsl, fatB:t.fatDslBRL, pn:P('dsl'), pf:P('fatDsl'), conv:d.convDsl, pconv:dp&&dp.convDsl},
+    {k:'wbn', name:'Webinar',  cls:'--c8', n:t.wbn, fat:t.fatWbn, fatB:t.fatWbnBRL, pn:P('wbn'), pf:P('fatWbn'), conv:d.convWbn, pconv:dp&&dp.convWbn},
+  ];
+  const card=(label,val,delta,color,sub)=>`<div class="step pos-card" style="border-left-color:var(${color})"><div class="step-main"><div class="m-label">${label}</div><div class="m-val">${val}</div><div class="m-delta">${delta||'<span class="delta">&nbsp;</span>'}</div></div>${sub||''}</div>`;
+  const cards=items.map(i=>
+    card('Vendas '+i.name, intf(i.n), deltaBadge(i.n,i.pn,'vendas'), i.cls,
+      `<div class="secs"><div><span class="s-label">Conversão</span><span class="s-val">${pct(i.conv)}</span><span class="s-d">${deltaMini(i.conv,i.pconv,'convchk')}</span></div></div>`)+
+    card('Faturamento '+i.name, brlEx(i.fat,i.fatB), deltaBadge(i.fat,i.pf,'fat'), i.cls)
+  ).join('');
+  const main=Math.max(0,t.fat-t.fatUsl-t.fatDsl-t.fatWbn), mainB=Math.max(0,t.fatBRL-t.fatUslBRL-t.fatDslBRL-t.fatWbnBRL);
+  const parts=[{name:MAIN_PRODUCT||'Produto principal', v:main, b:mainB, c:'--c7'}].concat(items.map(i=>({name:i.name, v:i.fat, b:i.fatB, c:i.cls})));
+  const tot=parts.reduce((s,x)=>s+x.v,0);
+  const legend=parts.map(x=>`<div class="pos-leg"><i style="background:var(${x.c})"></i><span class="pl-name">${x.name}</span><b>${brlEx(x.v,x.b)}</b><span class="pl-pct">${tot?pct(x.v/tot):'-'}</span></div>`).join('');
+  el.innerHTML=`<div class="pos-cards">${cards}</div>
+    <div class="card pos-donut"><h3>Faturamento por produto</h3><p class="hint">Composição do faturamento · conversão (vendas ÷ vendas EPN) em cada card</p>
+      <div class="chart-box chart-sm"><canvas id="gPosDonut"></canvas></div><div class="pos-legend">${legend}</div></div>`;
+  destroy('gPosDonut'); const cv=document.getElementById('gPosDonut'); if(!cv||!tot) return;
+  charts.gPosDonut=new Chart(cv,{type:'doughnut',
+    data:{labels:parts.map(x=>x.name),datasets:[{data:parts.map(x=>+x.v.toFixed(2)),backgroundColor:parts.map(x=>cvar(x.c)||'#888'),borderColor:cvar('--surface')||'#fff',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>c.label+': '+brlEx(c.raw,parts[c.dataIndex].b)+' ('+pct(c.raw/tot)+')'}}}}});
+}
+
 /* ---------------- PAGE 1: Visão Geral ---------------- */
 function renderGeral(){
   const fM=metaActive(), fS=salesActive();          // fS = todas as vendas do funil
@@ -538,6 +571,7 @@ function renderGeral(){
   const pw=prevWindow();
   const tp = pw ? totals(SALES.filter(s=>inRange(s.d,pw.from,pw.to)), ALLADS.filter(m=>inRange(m.d,pw.from,pw.to))) : null;
   renderFunnel('geralFunnel', funnelSteps(t, tp));
+  renderPosVenda(t, tp);
   const dd=daily(fS,fM);
   convCharts('gCpmCtr','gCrVis','gConv', dd);
   comboChart('gCombo', dd);
