@@ -446,11 +446,11 @@
 
   /* Upsell / Downsell / Webinar (Visão Geral) */
   .pos-title{margin:4px 15px 8px; font-size:14px}
-  .pos-grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:12px; padding:0 15px 15px; align-items:start}
+  .pos-grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:12px; padding:0 15px 15px; align-items:stretch}
   .pos-cards{display:grid; grid-template-columns:1fr 1fr; gap:8px}
   .pos-card{height:auto !important; min-height:64px}
-  .pos-donut{padding:12px 14px}
-  .pos-donut .chart-box{height:170px}
+  .pos-donut{padding:12px 14px; display:flex; flex-direction:column; min-height:0}
+  .pos-donut .chart-box{flex:1 1 0; min-height:0; height:auto; position:relative}
   .pos-legend{display:flex; flex-direction:column; gap:5px; margin-top:8px; font-size:12px}
   .pos-leg{display:flex; align-items:center; gap:6px}
   .pos-leg i{width:9px; height:9px; border-radius:50%; flex-shrink:0}

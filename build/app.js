@@ -555,7 +555,7 @@ function renderPosVenda(t, tp){
   const tot=parts.reduce((s,x)=>s+x.v,0);
   const legend=parts.map(x=>`<div class="pos-leg"><i style="background:var(${x.c})"></i><span class="pl-name">${x.name}</span><b>${brlEx(x.v,x.b)}</b><span class="pl-pct">${tot?pct(x.v/tot):'-'}</span></div>`).join('');
   el.innerHTML=`<div class="pos-cards">${cards}</div>
-    <div class="card pos-donut"><h3>Faturamento por produto</h3><p class="hint">Composição do faturamento · conversão (vendas ÷ vendas EPN) em cada card</p>
+    <div class="card pos-donut"><h3>Faturamento por produto</h3><p class="hint">Composição do faturamento</p>
       <div class="chart-box chart-sm"><canvas id="gPosDonut"></canvas></div><div class="pos-legend">${legend}</div></div>`;
   destroy('gPosDonut'); const cv=document.getElementById('gPosDonut'); if(!cv||!tot) return;
   charts.gPosDonut=new Chart(cv,{type:'doughnut',
