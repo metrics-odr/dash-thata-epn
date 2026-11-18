@@ -88,6 +88,14 @@ OFFER_CODE_RULES = {
     "txu3683k": "dsl",   # DOWNSELL
     "8t9ag3n5": "wbn",   # WEBINAR (Ascensão Webinar)
 }
+# Regra por NOME DA OFERTA (coluna "Nome Oferta"), só p/ o produto Autoridade
+# Estratégica: (trecho normalizado — minúsculo, sem acento — , tipo). A 1ª que casar vale.
+OFFER_NAME_RULES = [
+    ("webnar", "wbn"),          # "Webnar" -> webinário
+    ("webinar", "wbn"),
+    ("597 em 12x", "usl"),      # "R$597 em 12x com juros [EPN]" -> upsell
+    ("downsel", "dsl"),         # "Downselll [EPN]" -> downsell
+]
 OFFER_USL_LABEL = "Autoridade Estratégica (USL)"
 OFFER_DSL_LABEL = "Autoridade Estratégica (DSL)"
 # Aliases do cabeçalho da coluna com o código da oferta (planilha de vendas).
