@@ -291,8 +291,8 @@ ConvCHK (Vendas/Checkouts) · Faturamento · ROAS (Faturamento/Gasto) · Ticket 
   "Fat WBN" das tabelas. Nunca entra em Vendas/CAC/ConvCHK.
 - **Regra por CÓDIGO DA OFERTA (upsell atual, produto "Autoridade Estratégica")**:
   `OFFER_CODE_RULES` em `build/config.py` — `brce95ug` = upsell (USL), `txu3683k` =
-  downsell (DSL), `8t9ag3n5` = webinário (WBN). O build procura o código em qualquer
-  célula da linha de Compradores (coluna própria de código de oferta) e, se casar,
+  downsell (DSL), `8t9ag3n5` = webinário (WBN). O build procura o código como token dentro
+  da coluna `Nome Oferta` da aba Compradores (ex.: "Oferta dztz1uup") e, se casar,
   tem prioridade sobre a regra antiga; rótulos `OFFER_USL_LABEL`/`OFFER_DSL_LABEL`
   ("Autoridade Estratégica (USL/DSL)") contam como USL/DSL no `app.js`. A regra antiga
   (Case de Promoção por nome+valor) segue valendo para o histórico.

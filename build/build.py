@@ -595,8 +595,14 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         # se a coluna não existir, em qualquer célula da linha (igualdade exata).
         offer_kind = None
         if OFFER_CODE_RULES and not main:
-            for c in row:
-                offer_kind = OFFER_CODE_RULES.get(norm(c))
+            # O código vem dentro do "Nome Oferta" (ex.: "Oferta dztz1uup"), então
+            # casa por TOKEN (palavra) e não por igualdade da célula inteira.
+            cands = [cell(row, sidx["offer_code"])] if sidx.get("offer_code") is not None else row
+            for c in cands:
+                for tok in re.findall(r"[a-z0-9]+", norm(c)):
+                    offer_kind = OFFER_CODE_RULES.get(tok)
+                    if offer_kind:
+                        break
                 if offer_kind:
                     break
         if offer_kind:

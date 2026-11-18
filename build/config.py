@@ -91,8 +91,8 @@ OFFER_CODE_RULES = {
 OFFER_USL_LABEL = "Autoridade Estratégica (USL)"
 OFFER_DSL_LABEL = "Autoridade Estratégica (DSL)"
 # Aliases do cabeçalho da coluna com o código da oferta (planilha de vendas).
-OFFER_CODE_ALIASES = ["cod. oferta", "cod oferta", "codigo oferta", "codigo da oferta",
-                      "cod. da oferta", "offer code", "offer_code", "oferta"]
+OFFER_CODE_ALIASES = ["nome oferta", "cod. oferta", "cod oferta", "codigo oferta", "codigo da oferta",
+                      "cod. da oferta", "offer code", "offer_code"]
 
 # Este cliente adicionou uma coluna própria de correção manual do faturamento
 # ("Faturamento Fixo", em REAIS) na aba Compradores, substituindo o uso da
