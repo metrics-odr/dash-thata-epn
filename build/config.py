@@ -77,6 +77,23 @@ UPSELL_DSL_LABEL = "Case de Promoção (DSL)"  # oferta de recusa, mais barata
 # Vendas/CAC/Ticket. "" desliga.
 WBN_PRODUCT_PREFIX = "autoridade estrategica"   # produto "Autoridade Estratégica"
 
+# NOVA REGRA por CÓDIGO DA OFERTA (coluna de código de oferta da aba Compradores):
+# os upsell/downsell/webinário atuais (produto "Autoridade Estratégica") são
+# identificados pelo código, que tem prioridade sobre a regra por nome/valor acima.
+# A regra antiga (Case de Promoção por nome+valor) continua valendo p/ o histórico
+# — linhas sem código casando seguem exatamente como antes.
+# Valores: "usl" (upsell) · "dsl" (downsell) · "wbn" (webinário).
+OFFER_CODE_RULES = {
+    "brce95ug": "usl",   # UPSELL
+    "txu3683k": "dsl",   # DOWNSELL
+    "8t9ag3n5": "wbn",   # WEBINAR (Ascensão Webinar)
+}
+OFFER_USL_LABEL = "Autoridade Estratégica (USL)"
+OFFER_DSL_LABEL = "Autoridade Estratégica (DSL)"
+# Aliases do cabeçalho da coluna com o código da oferta (planilha de vendas).
+OFFER_CODE_ALIASES = ["cod. oferta", "cod oferta", "codigo oferta", "codigo da oferta",
+                      "cod. da oferta", "offer code", "offer_code", "oferta"]
+
 # Este cliente adicionou uma coluna própria de correção manual do faturamento
 # ("Faturamento Fixo", em REAIS) na aba Compradores, substituindo o uso da
 # coluna "Fat. líquido (USD)" (que tinha o bug do "Fat. líquido (BRL)" com

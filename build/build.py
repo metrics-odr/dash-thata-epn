@@ -74,6 +74,12 @@ UPSELL_DSL_LABEL = getattr(cfg, "UPSELL_DSL_LABEL", "") or "Downsell"
 # Ascensão Webinar (WBN): produto vendido num webinário diário às compradoras do
 # produto principal. Cai na mesma planilha de vendas, sem UTM. "" desliga.
 WBN_PRODUCT_PREFIX = getattr(cfg, "WBN_PRODUCT_PREFIX", "") or ""
+# Regra por CÓDIGO DA OFERTA (opcional): {codigo: "usl"|"dsl"|"wbn"}. Tem prioridade
+# sobre a regra por nome/valor; linhas sem código casando seguem a regra antiga.
+OFFER_CODE_RULES = {str(k).strip().lower(): v for k, v in (getattr(cfg, "OFFER_CODE_RULES", {}) or {}).items()}
+OFFER_USL_LABEL = getattr(cfg, "OFFER_USL_LABEL", "") or "Upsell"
+OFFER_DSL_LABEL = getattr(cfg, "OFFER_DSL_LABEL", "") or "Downsell"
+OFFER_CODE_ALIASES = list(getattr(cfg, "OFFER_CODE_ALIASES", []) or [])
 # Coluna de faturamento alternativa, EM REAIS (correção manual do cliente sobre
 # uma coluna de faturamento quebrada) — opcional. Quando configurada, tem
 # prioridade sobre a coluna "val" (dólar) padrão, mas como todo o cálculo
@@ -550,7 +556,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
          "code": ["cod transacao", "cod. transacao", "codigo transacao"],
          "orig": ["valor compra (orig"],
          "pay": ["metodo pagto", "metodo de pagamento"], "parc": ["parcelas"],
-         "origem": ["origem"]},
+         "origem": ["origem"],
+         "offer_code": OFFER_CODE_ALIASES},
         # Fallback posicional só p/ colunas que existem nesta planilha
         # (Produto·Nome·Email·Data·Valor·Taxas·Faturamento). Sem fallback p/
         # utm_*/status: a planilha não tem essas colunas, então ausência -> vazio
@@ -584,8 +591,20 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         sale_camp = (det_campaign if use_utm_detail else cell(row, sidx["utm_campaign"])) or "(sem campanha)"
         adset_own = (det_medium if use_utm_detail else cell(row, sidx["utm_medium"])) or "(sem conjunto)"
         main = is_main_product(prod)
-        upsell = (not main) and is_upsell_product(prod)
-        wbn = (not main) and (not upsell) and is_wbn_product(prod)
+        # Regra por código da oferta (nova): procura o código na coluna própria ou,
+        # se a coluna não existir, em qualquer célula da linha (igualdade exata).
+        offer_kind = None
+        if OFFER_CODE_RULES and not main:
+            for c in row:
+                offer_kind = OFFER_CODE_RULES.get(norm(c))
+                if offer_kind:
+                    break
+        if offer_kind:
+            upsell = offer_kind in ("usl", "dsl")
+            wbn = offer_kind == "wbn"
+        else:
+            upsell = (not main) and is_upsell_product(prod)
+            wbn = (not main) and (not upsell) and is_wbn_product(prod)
         if not (main or upsell or wbn):
             continue
         # Match com o Meta = campanha + anúncio juntos (o mesmo Ad Name se repete
@@ -620,7 +639,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "pl": det_term or "(sem posicionamento)",
             "pay": cell(row, sidx["pay"]) or "(n/d)", "parc": cell(row, sidx["parc"]) or "(n/d)",
             "org": norm_origin(cell(row, sidx["origem"])),
-            "prod": prod, "main": main, "upsell": upsell, "wbn": wbn,
+            "prod": prod, "main": main, "upsell": upsell, "wbn": wbn, "offer_kind": offer_kind,
             "sale_camp": sale_camp, "ad": ad, "adset_own": adset_own, "meta_hit": meta_hit, "gads_hit": gads_hit,
             "email_n": norm(cell(row, sidx["email"])),
             "val": val,
@@ -686,7 +705,9 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         camp, adset, ad_out, pl_out, ch = attribution(r)
         val = r["val"]
         prod_out = r["prod"] or "—"
-        if r["upsell"]:
+        if r.get("offer_kind") in ("usl", "dsl"):
+            prod_out = OFFER_USL_LABEL if r["offer_kind"] == "usl" else OFFER_DSL_LABEL
+        elif r["upsell"]:
             # As 2 ofertas (upsell caro / downsell barato) vêm com o MESMO texto de
             # produto na planilha — só o valor da venda diferencia qual foi aceita.
             prod_out = UPSELL_USL_LABEL if val >= UPSELL_SPLIT_VALUE else UPSELL_DSL_LABEL
@@ -780,6 +801,8 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
             "main_product_prefix": MAIN_PRODUCT_PREFIX,
             "upsell_usl_label": UPSELL_USL_LABEL,
             "upsell_dsl_label": UPSELL_DSL_LABEL,
+            "offer_usl_label": OFFER_USL_LABEL if OFFER_CODE_RULES else "",
+            "offer_dsl_label": OFFER_DSL_LABEL if OFFER_CODE_RULES else "",
             "ia_worker_url": IA_WORKER_URL,
             # Metas da aba Relatórios (código de cor de CAC/ROAS)
             "cac_target": CAC_TARGET,

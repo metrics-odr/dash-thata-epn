@@ -16,6 +16,10 @@ const MAIN_PREFIX = B.main_product_prefix || '';
    build/build.py), então basta comparar direto — sem prefixo/norm(). */
 const USL_LABEL = B.upsell_usl_label || '';
 const DSL_LABEL = B.upsell_dsl_label || '';
+/* nova regra por código de oferta (OFFER_CODE_RULES): rótulos extras que
+   também contam como USL/DSL, sem mexer nos rótulos antigos (histórico). */
+const USL_LABEL2 = B.offer_usl_label || '';
+const DSL_LABEL2 = B.offer_dsl_label || '';
 /* status ATIVO/PAUSADO por campanha/conjunto/anúncio — só p/ o indicativo
    visual nas tabelas de otimização (Meta Ads); não afeta cálculo/filtro
    nenhum. Resolvido em latestStatusByDim() (mais abaixo): usa SEMPRE a linha
@@ -149,8 +153,8 @@ function addSales(a,r){ a.vendas+=r.main; a.vendasM+=(r.main&&r.meta)?1:0; a.fat
   a.fatBRL += (r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK));
   if(r.wbn){ a.wbn+=1; a.fatWbn+=r.val; a.fatWbnBRL+=(r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK)); }
   const vb=(r.val_brl!=null ? r.val_brl : r.val*(FX_RATE||FX_FALLBACK));
-  if(USL_LABEL && r.prod===USL_LABEL){ a.usl+=1; a.fatUsl+=r.val; a.fatUslBRL+=vb; }
-  else if(DSL_LABEL && r.prod===DSL_LABEL){ a.dsl+=1; a.fatDsl+=r.val; a.fatDslBRL+=vb; } }
+  if((USL_LABEL && r.prod===USL_LABEL) || (USL_LABEL2 && r.prod===USL_LABEL2)){ a.usl+=1; a.fatUsl+=r.val; a.fatUslBRL+=vb; }
+  else if((DSL_LABEL && r.prod===DSL_LABEL) || (DSL_LABEL2 && r.prod===DSL_LABEL2)){ a.dsl+=1; a.fatDsl+=r.val; a.fatDslBRL+=vb; } }
 function derive(a){
   const g=gastoOf(a), gP=a.spp+(taxf()-1)*a.spp;   /* gP: gasto só das linhas com Page Views (spp é todo Meta) */
   return {gasto:g, impr:a.im, cliques:a.cl, pv:a.pv, ck:a.ck, vendas:a.vendas, fat:a.fat, fatBRL:a.fatBRL,
