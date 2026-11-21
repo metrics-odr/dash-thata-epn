@@ -1,70 +1,80 @@
 /* ============================================================================
-   IDENTIDADE VISUAL — TODAS as cores da dashboard ficam AQUI.
-   Este arquivo NÃO tem lógica de dados nem layout: mexa aqui para trocar cores.
-   O tema ESCURO é o padrão; o CLARO é só um fallback opcional.
+   IDENTIDADE VISUAL — Thata Junqueira | Efeito Próximo Nível
+   Preto + dourado (logotipo EPN) — mesma ID da dashboard do Dr. Thiago Virgili.
+   TODAS as cores da dashboard ficam AQUI. Este arquivo NÃO tem lógica nem layout.
+   Tema ESCURO (preto/dourado) é o padrão; o CLARO (marfim) é a alternativa (toggle).
+   Obs.: o nome das variáveis --accent-blue* vem do motor genérico — aqui o "accent" é DOURADO.
    ============================================================================ */
 
-/* ------------------------------ TEMA CLARO --------------------------------- */
+/* ------------------------------ TEMA CLARO (alternativo) -------------------- */
 :root{
-  --text-primary:#1A1D2E; --bg:#F4F5F8; --surface:#FFFFFF; --border:#E6E8EE;
-  --muted:#6B7280; --ink:#1A1D2E; --selected:#DBEAFE;
-  --accent-blue:#3B5BDB; --accent-blue-light:#EEF2FF;
-  --good:#0CA30C; --bad:#E34948; --yellow:#E8A400; --aqua:#1BAF7A; --red:#E34948; --black:#1A1D2E;
-  --grid:#EEF0F5; --thead:#F5F7FB; --tfoot:#EEF1F7;
-  /* séries de gráfico (paleta) */
-  --c1:#3B5BDB; --c2:#E34948; --c3:#1BAF7A; --c4:#E8A400; --c5:#8AA0F0;
-  --c6:#9B59B6; --c7:#16A085; --c8:#E67E22; --c9:#F97316; --c10:#6366F1;
-  /* paleta dos gráficos no tema claro = mantém as cores originais */
-  --cc1:#3B5BDB; --cc2:#E34948; --cc3:#1BAF7A; --cc4:#E8A400; --cc5:#8AA0F0;
-  --cc6:#9B59B6; --cc7:#16A085; --cc8:#E67E22; --cc9:#F97316; --cc10:#6366F1;
+  --text-primary:#14110C;
+  /* sidebar: preto com um véu dourado bem fraco (diferencia do fundo da página) */
+  --sidebar-bg:linear-gradient(180deg,rgba(201,165,92,.13) 0%,rgba(201,165,92,.05) 60%,rgba(201,165,92,.09) 100%),#14110C;
+  --sidebar-bd:rgba(201,165,92,.28); --side-ink:#D9D1BF; --side-ink-hi:#FFFFFF; --side-muted:#A89F8C;
+  --bg:#F6F2EA; --surface:#FFFFFF; --border:#E7DFCE;
+  --muted:#7A705D; --ink:#1E1A12; --selected:#F2E6C9;
+  --accent-blue:#9A7330; --accent-blue-light:#F7EFDC; --accent-soft:rgba(154,115,48,.16); --on-accent:#FFFFFF;
+  --range-bg:rgba(154,115,48,.22); --range-ink:#1E1A12;
+  --good:#1E9E63; --bad:#D6453D; --yellow:#C98A10; --aqua:#2A98AE; --red:#D6453D; --black:#1E1A12;
+  --grid:#EFE8D8; --thead:#F8F3E7; --tfoot:#F2EBD9;
+  /* paleta base (bordas dos cards do funil no mobile) */
+  --c1:#9A7330; --c2:#1E9E63; --c3:#C98A10; --c4:#6F5BB0; --c5:#D6453D;
+  --c6:#2A98AE; --c7:#B5652F; --c8:#7C9A2E; --c9:#8A5A1F; --c10:#5C6BB8;
+  /* paleta dos gráficos */
+  --cc1:#9A7330; --cc2:#1E9E63; --cc3:#D6453D; --cc4:#C98A10; --cc5:#6F5BB0;
+  --cc6:#2A98AE; --cc7:#B5652F; --cc8:#7C9A2E; --cc9:#8A5A1F; --cc10:#5C6BB8;
   /* linhas semânticas dos gráficos */
-  --chart-vendas:#3B5BDB; --chart-gasto:#E34948; --chart-faturamento:#1BAF7A;
-  --chart-cpm:#E34948; --chart-ctr:#3B5BDB; --chart-cr:#3B5BDB;
-  --chart-vischk:#1BAF7A; --chart-convlp:#E8A400;
+  --chart-vendas:#9A7330; --chart-gasto:#D6453D; --chart-faturamento:#1E9E63;
+  --chart-cpm:#C9722F; --chart-ctr:#2A98AE; --chart-cr:#9A7330;
+  --chart-vischk:#1E9E63; --chart-convlp:#C98A10;
   /* heatmap por coluna (uma cor fixa por métrica; a opacidade varia no JS) */
-  --heat-gasto:#E34948; --heat-fat:#0CA30C; --heat-roas:#E8A400; --heat-vendas:#3B5BDB;
-  /* tags/pills de valor (CAC azul leve, ROAS dourado — nada de mostarda) */
-  --pill-cac:#3B5BDB; --pill-cac-bg:rgba(59,91,219,.10);
-  --pill-roas:#B7791F; --pill-roas-bg:rgba(183,121,31,.12);
+  --heat-gasto:#D6453D; --heat-fat:#1E9E63; --heat-roas:#E0B400; --heat-vendas:#9A7330;
+  /* tags/pills de valor (CAC ciano leve, ROAS dourado) */
+  --pill-cac:#23788A; --pill-cac-bg:rgba(42,152,174,.12);
+  --pill-roas:#9A6A12; --pill-roas-bg:rgba(201,138,16,.14);
+  /* tom translúcido dos cards-chave do funil horizontal */
+  --tone-red:#D6453D; --tone-gold:#9A7330; --tone-green:#1E9E63; --tone-yellow:#C98A10;
   /* indicativo ativo/pausado (campanha/conjunto/anúncio) nas tabelas de otimização */
-  --status-active:#3B5BDB; --status-active-glow:rgba(59,91,219,.45);
+  --status-active:#1E9E63; --status-active-glow:rgba(30,158,99,.45);
 }
 
-/* ------------------------------ TEMA ESCURO (padrão) ----------------------- */
+/* ------------------------------ TEMA ESCURO (padrão) ------------------------ */
 :root[data-theme="dark"]{
-  --text-primary:#0B0E14;      /* fundo da sidebar (mais escuro que o fundo principal) */
-  --bg:#0F1117;                /* Fundo principal */
-  --surface:#171B24;           /* Cards */
-  --border:#2C3444;            /* Bordas */
-  --ink:#F4F7FB;               /* Texto principal */
-  --muted:#A9B4C4;             /* Texto secundário */
-  --accent-blue:#3B82F6;       /* Accent: botões, links, abas ativas, foco */
-  --accent-blue-light:#1B2740; /* fundo sutil azulado: badges, hover de linha, hero */
-  --selected:#27354A;          /* Linha selecionada */
-  --good:#22C55E;              /* Positivo */
-  --bad:#EF4444;               /* Negativo */
-  --red:#EF4444;
-  --yellow:#F59E0B;            /* Alerta */
-  --aqua:#06B6D4;              /* Info/seleção (severidade baixa) */
-  --black:#0F1117;
-  --grid:#2C3444;              /* Linhas do gráfico */
-  --thead:#1E2430;             /* Cabeçalho de tabela (= cards hover) */
-  --tfoot:#1E2430;
-  /* PALETA base p/ bordas do funil (aprovada) */
-  --c1:#3B82F6; --c2:#22C55E; --c3:#F59E0B; --c4:#8B5CF6; --c5:#EF4444;
-  --c6:#06B6D4; --c7:#EC4899; --c8:#84CC16; --c9:#F97316; --c10:#6366F1;
-  /* PALETA dos GRÁFICOS — mais vívida/saturada (até 10 séries) */
-  --cc1:#2F6BFF; --cc2:#16D66B; --cc3:#FFB020; --cc4:#9D5CFF; --cc5:#FF3B47;
-  --cc6:#1FD5EC; --cc7:#FF4D8D; --cc8:#9BE015; --cc9:#FF8A1F; --cc10:#6D7BFF;
-  /* linhas semânticas dos gráficos (vívidas) */
-  --chart-vendas:#2F6BFF; --chart-gasto:#FF3B47; --chart-faturamento:#16D66B;
-  --chart-cpm:#FFB020; --chart-ctr:#1FD5EC; --chart-cr:#2F6BFF;
-  --chart-vischk:#16D66B; --chart-convlp:#FFB020;
-  /* heatmap por coluna: Gasto vermelho, Faturamento verde, ROAS amarelo, Vendas azul */
-  --heat-gasto:#EF4444; --heat-fat:#22C55E; --heat-roas:#F59E0B; --heat-vendas:#2F6BFF;
-  /* tags/pills de valor (CAC azul leve, ROAS dourado — parecido com a tag "Automático") */
-  --pill-cac:#60A5FA; --pill-cac-bg:rgba(96,165,250,.14);
-  --pill-roas:#FBBF24; --pill-roas-bg:rgba(251,191,36,.14);
+  --text-primary:#000000;
+  /* sidebar: preto + dourado "quase transparente" por cima. Para o layout em "L"
+     (sidebar na mesma cor da topbar), troque por: color-mix(in srgb,var(--surface) 72%,transparent) */
+  --sidebar-bg:linear-gradient(180deg,rgba(201,165,92,.115) 0%,rgba(201,165,92,.045) 58%,rgba(201,165,92,.08) 100%),#000000;
+  --sidebar-bd:rgba(201,165,92,.24); --side-ink:#D8D0BF; --side-ink-hi:#FFFFFF; --side-muted:#A89F8C;
+  --bg:#000000;                /* fundo principal (preto da marca) */
+  --surface:#1B1915;           /* cards */
+  --border:#4B4335;            /* bordas */
+  --ink:#F3EDE0;               /* texto principal (marfim) */
+  --muted:#A89F8C;             /* texto secundário */
+  --accent-blue:#C9A55C;       /* ACCENT = dourado da marca */
+  --accent-blue-light:#221C10; /* fundo sutil dourado: badges, hover de linha, hero */
+  --accent-soft:rgba(201,165,92,.16); --on-accent:#17120A;
+  --range-bg:rgba(201,165,92,.38); --range-ink:#FFF4D9;
+  --selected:#3A2F18;          /* linha selecionada */
+  --good:#3FB68B; --bad:#E5534B; --red:#E5534B; --yellow:#E8B04A; --aqua:#5BB5C9; --black:#000000;
+  --grid:#2F2A21; --thead:#25211A; --tfoot:#211D16;
+  /* paleta base (bordas dos cards do funil no mobile) */
+  --c1:#C9A55C; --c2:#3FB68B; --c3:#E8B04A; --c4:#8D7BC9; --c5:#E5534B;
+  --c6:#5BB5C9; --c7:#D98A5B; --c8:#9BBF5A; --c9:#B07A3C; --c10:#7F8FD1;
+  /* paleta dos gráficos */
+  --cc1:#C9A55C; --cc2:#3FB68B; --cc3:#E5534B; --cc4:#F0D58E; --cc5:#8D7BC9;
+  --cc6:#5BB5C9; --cc7:#D98A5B; --cc8:#9BBF5A; --cc9:#B07A3C; --cc10:#7F8FD1;
+  /* linhas semânticas dos gráficos */
+  --chart-vendas:#C9A55C; --chart-gasto:#E5534B; --chart-faturamento:#3FB68B;
+  --chart-cpm:#E89B3C; --chart-ctr:#5BB5C9; --chart-cr:#C9A55C;
+  --chart-vischk:#3FB68B; --chart-convlp:#F0D58E;
+  /* heatmap por coluna: Gasto vermelho, Faturamento verde, ROAS amarelo, Vendas dourado */
+  --heat-gasto:#E5534B; --heat-fat:#3FB68B; --heat-roas:#E8B04A; --heat-vendas:#C9A55C;
+  /* tags/pills de valor (CAC ciano leve, ROAS dourado) */
+  --pill-cac:#6CC3D6; --pill-cac-bg:rgba(91,181,201,.15);
+  --pill-roas:#F0C75E; --pill-roas-bg:rgba(240,199,94,.14);
+  /* tom translúcido dos cards-chave do funil horizontal */
+  --tone-red:#F0776F; --tone-gold:#D9B96E; --tone-green:#4CCB9B; --tone-yellow:#F0C75E;
   /* indicativo ativo/pausado (campanha/conjunto/anúncio) nas tabelas de otimização */
-  --status-active:#3B82F6; --status-active-glow:rgba(59,130,246,.55);
+  --status-active:#3FB68B; --status-active-glow:rgba(63,182,139,.55);
 }

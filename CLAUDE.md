@@ -375,6 +375,17 @@ SETUP-CRON.md          # valores do cron-job.org (owner/repo com placeholders)
 SETUP-IA.md            # passo a passo da aba IA Insights
 ```
 
+### Identidade visual e funil horizontal (só apresentação)
+- **Tema preto + dourado** (logotipo EPN; mesma ID da dash do Dr. Thiago Virgili) — todas as cores em
+  `build/identidade-visual.css` (escuro = padrão; claro = marfim). `--accent-blue*` é o nome herdado do motor,
+  aqui significa **dourado**. Sidebar usa `--sidebar-bg` (preto + véu dourado fraco; para o layout em "L",
+  troque pela mesma cor da topbar, indicada no comentário do arquivo); topbar é translúcida com blur.
+  O logotipo está embutido (webp, fundo transparente) em `build/template.html`.
+- **Desktop**: o funil é horizontal (`renderFunnelH()` em `build/app.js`) — KPIs, etapas em linha com a taxa de
+  conversão entre elas e pós-venda, cada card com minigráfico diário interativo (`spark()`), acima do gráfico e
+  da tabela diária. O funil vertical antigo continua sendo renderizado e é o que aparece no **mobile (≤900px)**,
+  que não deve mudar. Métricas/cálculos vêm de `funnelSteps()` (inalterado).
+
 ### Aba Relatórios (relatórios automáticos do funil)
 Aba entre **Meta Ads** e **IA Insights**. Reaproveita os filtros de data da topbar
 e os dados já embutidos (`meta[]`/`sales[]`) — tudo calculado no navegador (custo
