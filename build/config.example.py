@@ -33,6 +33,15 @@ GID_REFUNDS = ""
 GID_GOOGLE = ""   # aba Google Ads (opcional; "" desliga a aba)
 GID_SALES = ""         # ex.: "222222222"  (aba Compradores)
 
+# --- Meta Ads via Marketing API (opcional; substitui a aba Meta Ads) ----------
+# "sheet" = lê a aba da planilha (padrão). "api" = lê direto da API, usando o
+# token do System User no Secret META_ACCESS_TOKEN (nunca commitar o token).
+META_SOURCE = "sheet"
+META_ACCOUNT_ID = ""          # ex.: "358786128615575" (sem "act_")
+META_API_SINCE = "2025-01-01"  # 1º dia a buscar
+META_CHECKOUT_ACTION = "omni_initiated_checkout"
+META_ATTRIBUTION_WINDOWS = None  # ex.: ["7d_click", "1d_view"]; None = padrão da conta
+
 # ==========================================================================
 # 2) REGRAS DE NEGÓCIO
 # ==========================================================================

@@ -51,6 +51,13 @@ if _missing:
 
 SPREADSHEET_ID = cfg.SPREADSHEET_ID
 GID_META = cfg.GID_META
+# Fonte do Meta Ads: "sheet" (aba da planilha, padrão) ou "api" (Marketing API,
+# token em META_ACCESS_TOKEN). Ver build/meta_api.py.
+META_SOURCE = getattr(cfg, "META_SOURCE", "sheet")
+META_ACCOUNT_ID = getattr(cfg, "META_ACCOUNT_ID", "")
+META_API_SINCE = getattr(cfg, "META_API_SINCE", "2025-01-01")
+META_CHECKOUT_ACTION = getattr(cfg, "META_CHECKOUT_ACTION", "omni_initiated_checkout")
+META_ATTRIBUTION_WINDOWS = getattr(cfg, "META_ATTRIBUTION_WINDOWS", None)
 GID_SALES = cfg.GID_SALES
 # Aba "Google Ads" (opcional) — mesma planilha. Sem GID_GOOGLE a aba some do build.
 GID_GOOGLE = getattr(cfg, "GID_GOOGLE", "") or ""
@@ -911,7 +918,16 @@ def main():
     ap.add_argument("--out", default="dist/index.html")
     args = ap.parse_args()
 
-    meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
+    if args.meta_file or META_SOURCE != "api":
+        meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
+    else:
+        # Sem fallback silencioso: token expirado deve QUEBRAR o build (e não
+        # publicar um dashboard sem gasto do Meta).
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from meta_api import fetch_meta_rows
+        meta_rows = fetch_meta_rows(META_ACCOUNT_ID, META_API_SINCE,
+                                    checkout_action=META_CHECKOUT_ACTION,
+                                    attribution_windows=META_ATTRIBUTION_WINDOWS)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
     google_rows = None
     if args.google_file or GID_GOOGLE:
