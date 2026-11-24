@@ -39,6 +39,7 @@ GID_SALES = ""         # ex.: "222222222"  (aba Compradores)
 META_SOURCE = "sheet"
 META_ACCOUNT_ID = ""          # ex.: "358786128615575" (sem "act_")
 META_API_SINCE = "2025-01-01"  # 1º dia a buscar
+META_CAMPAIGN_CONTAINS = ""    # só campanhas cujo nome contém este texto ("" = conta toda)
 META_CHECKOUT_ACTION = "omni_initiated_checkout"
 META_ATTRIBUTION_WINDOWS = None  # ex.: ["7d_click", "1d_view"]; None = padrão da conta
 

@@ -104,7 +104,8 @@ def _status(s) -> str:
 
 def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
                     checkout_action: str = "omni_initiated_checkout",
-                    attribution_windows: list[str] | None = None) -> list[list[str]]:
+                    attribution_windows: list[str] | None = None,
+                    campaign_contains: str = "") -> list[list[str]]:
     token = os.environ.get("META_ACCESS_TOKEN", "").strip()
     if not token:
         raise MetaApiError("META_ACCESS_TOKEN não definido (cadastre como Secret do GitHub Actions).")
@@ -126,7 +127,12 @@ def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
         }
 
     # --- 2) insights diários por anúncio (em janelas de 90 dias p/ respostas menores) ---
+    # Recorte por nome de campanha (a conta tem vários funis; o dashboard é de um só)
+    flt = ({"filtering": json.dumps([{"field": "campaign.name", "operator": "CONTAIN",
+                                      "value": campaign_contains}])}
+           if campaign_contains else {})
     params_base = {
+        **flt,
         "level": "ad", "time_increment": 1, "limit": 500,
         "fields": "date_start,campaign_name,adset_name,ad_name,ad_id,spend,impressions,"
                   "inline_link_clicks,actions,video_play_actions,"
@@ -139,9 +145,10 @@ def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
     d0 = date.fromisoformat(since)
     d1 = date.fromisoformat(until)
     while d0 <= d1:
-        d_end = min(d0 + timedelta(days=89), d1)
+        d_end = min(d0 + timedelta(days=29), d1)
         p = dict(params_base)
         p["time_range"] = json.dumps({"since": d0.isoformat(), "until": d_end.isoformat()})
+        n0 = len(rows)
         for r in _paginate(f"{act}/insights", p, token):
             acts = r.get("actions")
             m = meta_by_ad.get(r.get("ad_id"), {})
@@ -158,6 +165,7 @@ def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
                 r.get("ad_id", ""), _status(m.get("ds")), _status(m.get("as")),
                 _status(m.get("cs")), m.get("link", ""),
             ])
+        print(f"  meta api: {d0}..{d_end} +{len(rows) - n0} linhas", file=sys.stderr, flush=True)
         d0 = d_end + timedelta(days=1)
 
     rows.sort(key=lambda x: (x[0], x[1], x[2], x[3]))

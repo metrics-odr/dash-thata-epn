@@ -55,7 +55,8 @@ GID_META = cfg.GID_META
 # token em META_ACCESS_TOKEN). Ver build/meta_api.py.
 META_SOURCE = os.environ.get("META_SOURCE") or getattr(cfg, "META_SOURCE", "sheet")
 META_ACCOUNT_ID = os.environ.get("META_ACCOUNT_ID") or getattr(cfg, "META_ACCOUNT_ID", "")
-META_API_SINCE = getattr(cfg, "META_API_SINCE", "2025-01-01")
+META_API_SINCE = os.environ.get("META_API_SINCE") or getattr(cfg, "META_API_SINCE", "2025-01-01")
+META_CAMPAIGN_CONTAINS = os.environ.get("META_CAMPAIGN_CONTAINS") or getattr(cfg, "META_CAMPAIGN_CONTAINS", "")
 META_CHECKOUT_ACTION = getattr(cfg, "META_CHECKOUT_ACTION", "omni_initiated_checkout")
 META_ATTRIBUTION_WINDOWS = getattr(cfg, "META_ATTRIBUTION_WINDOWS", None)
 GID_SALES = cfg.GID_SALES
@@ -927,7 +928,8 @@ def main():
         from meta_api import fetch_meta_rows
         meta_rows = fetch_meta_rows(META_ACCOUNT_ID, META_API_SINCE,
                                     checkout_action=META_CHECKOUT_ACTION,
-                                    attribution_windows=META_ATTRIBUTION_WINDOWS)
+                                    attribution_windows=META_ATTRIBUTION_WINDOWS,
+                                    campaign_contains=META_CAMPAIGN_CONTAINS)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
     google_rows = None
     if args.google_file or GID_GOOGLE:
