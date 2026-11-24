@@ -232,7 +232,8 @@ function renderTable(cfg){
       if(c.heat && ext[c.key]) bg=`background:${heat(v,ext[c.key][0],ext[c.key][1],c.heat)}`;
       const cls=(c.type==='dim'?'dim':'');
       const dot = (ci===0 && cfg.statusMap) ? statusDot(cfg.statusMap[r.k]) : '';
-      return `<td class="${cls}" style="${bg}">${dot}${fmt(c.type,v,r.cells[c.key+'_ex'])}</td>`;
+      const thm = (ci===0 && cfg.thumbOf) ? adThumb(cfg.thumbOf[r.k]) : '';
+      return `<td class="${cls}" style="${bg}">${thm}${dot}${fmt(c.type,v,r.cells[c.key+'_ex'])}</td>`;
     }).join('');
     return `<tr class="${sel?'sel':''}" data-k="${encodeURIComponent(r.k)}">${tds}</tr>`;
   }).join('')+'</tbody>';
@@ -243,6 +244,7 @@ function renderTable(cfg){
   }).join('')+'</tr></tfoot>'; }
   table.style.width=totalW+'px';
   table.innerHTML=colgroup+thead+tbody+tfoot;
+  table.querySelectorAll('.ad-th').forEach(im=>im.addEventListener('click',e=>{ e.stopPropagation(); openAdPreview(im.dataset.aid); }));
   const cols=table.querySelector('colgroup').children;
   table.querySelectorAll('thead th').forEach(th=>{
     th.addEventListener('click',e=>{ if(e.target.classList.contains('rsz'))return;
@@ -272,6 +274,47 @@ function renderTable(cfg){
 }
 /* status ATIVO/PAUSADO ao lado do nome (campanha/conjunto/anúncio) — só o
    indicativo visual; não altera dado, ordenação ou filtro nenhum. */
+/* ---- prévia do anúncio (miniatura na tabela + modal) — dados de DATA.ad_media,
+   gerados em build/meta_api.py (só existem quando o Meta vem da API) ---- */
+const AD_MEDIA=DATA.ad_media||{};
+function adThumb(aid){
+  const m=aid&&AD_MEDIA[aid]; if(!m) return '';
+  return m.th ? `<img class="ad-th" data-aid="${aid}" src="${m.th}" alt="" title="Ver prévia do anúncio">`
+              : `<span class="ad-th none" data-aid="${aid}" title="Ver prévia do anúncio">▶</span>`;
+}
+/* anúncio (por nome) -> Ad ID com mais gasto dentro das linhas do escopo; o mesmo
+   nome (AD01...) se repete em campanhas diferentes como anúncios distintos. */
+function adThumbMap(rows){
+  const best={};
+  rows.forEach(r=>{ if(!r.aid||!AD_MEDIA[r.aid]) return;
+    const b=best[r.ad]||(best[r.ad]={sp:{},top:null});
+    b.sp[r.aid]=(b.sp[r.aid]||0)+(r.sp||0);
+    if(!b.top||b.sp[r.aid]>b.sp[b.top]) b.top=r.aid; });
+  const out={}; for(const k in best) out[k]=best[k].top; return out;
+}
+function openAdPreview(aid){
+  const m=AD_MEDIA[aid]; if(!m) return;
+  const row=META.find(r=>r.aid===aid)||{};
+  const old=document.getElementById('adpvOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='adpvOv'; ov.className='adpv-ov';
+  const frame = m.pv
+    ? `<iframe src="${esc(m.pv).replace(/"/g,'&quot;')}" width="335" height="450" scrolling="yes" frameborder="0" loading="lazy"></iframe>`
+    : (m.th?`<img src="${m.th}" alt="">`:'<div class="adpv-none">Prévia indisponível</div>');
+  const btn=(u,t)=>u?`<a class="adpv-btn" href="${esc(u).replace(/"/g,'&quot;')}" target="_blank" rel="noopener">${t}</a>`:'';
+  ov.innerHTML=`<div class="adpv-box" role="dialog" aria-modal="true">
+    <button class="adpv-x" aria-label="Fechar">&times;</button>
+    <h3>${esc(row.ad||'Anúncio')}</h3>
+    <div class="adpv-sub">${esc([row.camp,row.adset].filter(Boolean).join(' · '))}</div>
+    <div class="adpv-card">${frame}</div>
+    <div class="adpv-links">${m.sh?`<a class="adpv-lnk" href="${esc(m.sh).replace(/"/g,'&quot;')}" target="_blank" rel="noopener">Ver a prévia oficial do Facebook</a>`:''}</div>
+    ${btn(m.ig,'Ver anúncio no Instagram ↗')}
+  </div>`;
+  const close=()=>{ ov.remove(); document.removeEventListener('keydown',onKey); };
+  const onKey=e=>{ if(e.key==='Escape') close(); };
+  ov.addEventListener('click',e=>{ if(e.target===ov||e.target.classList.contains('adpv-x')) close(); });
+  document.addEventListener('keydown',onKey);
+  document.body.appendChild(ov);
+}
 function statusDot(active){
   if(active==null) return '';
   return active ? '<span class="status-dot on" title="Ativo"></span>' : '<span class="status-dot off" title="Pausado"></span>';
@@ -797,7 +840,7 @@ function renderChannel(ch){
   renderTable({id:P+'tAdset', cols:HCOLS.map((c,i)=>i===0?{...c,label:(ch==='gads'?'Grupo de anúncios':'Conjunto'),big:true}:c), rows:hrAdset.rows, total:totRowOf(hrAdset.total),
     statusMap:latestStatusByDim(metaScopeAllDates('A',ch),'adset','as'), selectable:true, selSet:SEL.A, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey),ch)});
   renderTable({id:P+'tAd', cols:AD_HCOLS.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hrAd.rows, total:totRowOf(hrAd.total),
-    statusMap:latestStatusByDim(metaScopeAllDates('D',ch),'ad','ds'), selectable:true, selSet:SEL.D, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey),ch)});
+    statusMap:latestStatusByDim(metaScopeAllDates('D',ch),'ad','ds'), thumbOf:(ch==='gads'?null:adThumbMap(Sd.fM)), selectable:true, selSet:SEL.D, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey),ch)});
 
   /* cada gráfico segue a dimensão da tabela acima (mesmos dados escopados);
      quando a própria dimensão tem seleção (clique na tabela), o gráfico mostra

@@ -11,9 +11,13 @@ Credenciais (nunca no repositório):
 """
 from __future__ import annotations
 
+import base64
+import html
 import json
 import os
+import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 import time
 import urllib.error
 import urllib.parse
@@ -32,11 +36,17 @@ HEADER = [
 ]
 
 
+# ad_id -> {"th": data-URI da miniatura, "sh": link oficial da prévia (fb.me),
+#           "ig": permalink do Instagram, "pv": src do iframe da prévia}
+# Preenchido por fetch_meta_rows(); build.py grava em data["ad_media"].
+AD_MEDIA: dict[str, dict] = {}
+
+
 class MetaApiError(RuntimeError):
     pass
 
 
-def _get(url: str, params: dict | None = None, token: str = "", retries: int = 4) -> dict:
+def _get(url: str, params: dict | None = None, token: str = "", retries: int = 6) -> dict:
     if params is not None:
         q = dict(params)
         q["access_token"] = token
@@ -61,7 +71,10 @@ def _get(url: str, params: dict | None = None, token: str = "", retries: int = 4
                 ) from None
             last = f"HTTP {e.code} code={code} {err.get('message', body[:200])}"
             # 4/17/32/613 = rate limit; 1/2 = erro transitório
-            if code in (1, 2, 4, 17, 32, 613) or e.code >= 500:
+            if code in (4, 17, 32, 613, 80000, 80003, 80004, 80014):
+                time.sleep(min(30 * (i + 1), 120))   # throttle da conta: espera e tenta de novo
+                continue
+            if code in (1, 2) or e.code >= 500:
                 time.sleep(2 ** i * 3)
                 continue
             raise MetaApiError(last) from None
@@ -105,7 +118,7 @@ def _status(s) -> str:
 def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
                     checkout_action: str = "omni_initiated_checkout",
                     attribution_windows: list[str] | None = None,
-                    campaign_contains: str = "") -> list[list[str]]:
+                    campaign_contains: str = "", preview_limit: int = 0) -> list[list[str]]:
     token = os.environ.get("META_ACCESS_TOKEN", "").strip()
     if not token:
         raise MetaApiError("META_ACCESS_TOKEN não definido (cadastre como Secret do GitHub Actions).")
@@ -114,16 +127,22 @@ def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
 
     # --- 1) metadados por anúncio: status (anúncio/conjunto/campanha) + permalink ---
     meta_by_ad: dict[str, dict] = {}
-    for ad in _paginate(f"{act}/ads", {
+    ads_params = {
         "fields": "id,effective_status,adset{effective_status},campaign{effective_status},"
-                  "creative{instagram_permalink_url}",
-        "limit": 200,
-    }, token):
+                  "preview_shareable_link,creative{instagram_permalink_url,thumbnail_url}",
+        "limit": 100,
+    }
+    if campaign_contains:  # a conta tem vários funis: não listar os anúncios dos outros
+        ads_params["filtering"] = json.dumps([{"field": "campaign.name", "operator": "CONTAIN",
+                                               "value": campaign_contains}])
+    for ad in _paginate(f"{act}/ads", ads_params, token):
         meta_by_ad[ad["id"]] = {
             "ds": (ad.get("effective_status") or ""),
             "as": ((ad.get("adset") or {}).get("effective_status") or ""),
             "cs": ((ad.get("campaign") or {}).get("effective_status") or ""),
             "link": ((ad.get("creative") or {}).get("instagram_permalink_url") or ""),
+            "sh": ad.get("preview_shareable_link") or "",
+            "thumb": ((ad.get("creative") or {}).get("thumbnail_url") or ""),
         }
 
     # --- 2) insights diários por anúncio (em janelas de 90 dias p/ respostas menores) ---
@@ -168,6 +187,50 @@ def fetch_meta_rows(account_id: str, since: str, until: str | None = None,
         print(f"  meta api: {d0}..{d_end} +{len(rows) - n0} linhas", file=sys.stderr, flush=True)
         d0 = d_end + timedelta(days=1)
 
+    spend: dict[str, float] = {}
+    for r in rows:
+        if r[12]:
+            spend[r[12]] = spend.get(r[12], 0.0) + float(r[4] or 0)
+    _fetch_media(spend, meta_by_ad, token, preview_limit)
     rows.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
     print(f"  meta api: {len(rows)} linhas ({since}..{until}), {len(meta_by_ad)} anuncios", file=sys.stderr)
     return [HEADER] + rows
+
+
+def _fetch_media(spend: dict, meta_by_ad: dict, token: str, preview_limit: int) -> None:
+    """Miniatura (embutida como data-URI: a URL do fbcdn expira; baixar a imagem
+    NÃO conta na cota da API) + link oficial da prévia (já vem na listagem de
+    anúncios). O iframe da prévia custa 1 chamada da API por anúncio, e apps em
+    'development_access' têm cota baixa: só os `preview_limit` anúncios de maior
+    gasto (0 = desligado). Falha por anúncio nunca derruba o build."""
+    AD_MEDIA.clear()
+    ad_ids = set(spend)
+    with_preview = set(sorted(spend, key=spend.get, reverse=True)[:max(preview_limit, 0)])
+
+    def one(ad_id: str):
+        m = meta_by_ad.get(ad_id, {})
+        out = {"sh": m.get("sh", ""), "ig": m.get("link", ""), "th": "", "pv": ""}
+        if m.get("thumb"):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(m["thumb"]), timeout=30) as r:
+                    mime = r.headers.get("Content-Type", "image/jpeg").split(";")[0]
+                    out["th"] = f"data:{mime};base64," + base64.b64encode(r.read()).decode()
+            except Exception:
+                pass
+        if ad_id in with_preview:
+            try:
+                p = _get(f"{BASE}/{ad_id}/previews", {"ad_format": "MOBILE_FEED_STANDARD"}, token, retries=2)
+                mt = re.search(r'src="([^"]+)"', (p.get("data") or [{}])[0].get("body", ""))
+                if mt:
+                    out["pv"] = html.unescape(mt.group(1))
+            except Exception:
+                pass
+        return ad_id, out
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        for ad_id, out in ex.map(one, sorted(ad_ids)):
+            AD_MEDIA[ad_id] = out
+    got = sum(1 for v in AD_MEDIA.values() if v["th"])
+    pv = sum(1 for v in AD_MEDIA.values() if v["pv"])
+    print(f"  meta api: midia de {len(AD_MEDIA)} anuncios (miniaturas {got}, previas {pv})",
+          file=sys.stderr, flush=True)

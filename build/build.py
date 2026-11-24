@@ -58,6 +58,7 @@ META_ACCOUNT_ID = os.environ.get("META_ACCOUNT_ID") or getattr(cfg, "META_ACCOUN
 META_API_SINCE = os.environ.get("META_API_SINCE") or getattr(cfg, "META_API_SINCE", "2025-01-01")
 META_CAMPAIGN_CONTAINS = os.environ.get("META_CAMPAIGN_CONTAINS") or getattr(cfg, "META_CAMPAIGN_CONTAINS", "")
 META_CHECKOUT_ACTION = getattr(cfg, "META_CHECKOUT_ACTION", "omni_initiated_checkout")
+META_PREVIEW_LIMIT = int(os.environ.get("META_PREVIEW_LIMIT") or getattr(cfg, "META_PREVIEW_LIMIT", 0))
 META_ATTRIBUTION_WINDOWS = getattr(cfg, "META_ATTRIBUTION_WINDOWS", None)
 GID_SALES = cfg.GID_SALES
 # Aba "Google Ads" (opcional) — mesma planilha. Sem GID_GOOGLE a aba some do build.
@@ -415,6 +416,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
          # colunas simplesmente não mostram o indicativo). Usado só para o
          # "sinal" visual ao lado do nome nas tabelas de otimização; não afeta
          # nenhum cálculo/filtro.
+         "aid": ["ad id", "id do anuncio"],
          "campaign_status": ["campaign status", "status da campanha"],
          "adset_status": ["ad set status", "adset status", "status do conjunto"],
          "ad_status": ["ad status", "status do anuncio"]},
@@ -469,7 +471,7 @@ def process(meta_rows, sales_rows, fx_rate: float = FX_RATE_FALLBACK, fx_rate_li
         ad_st = cell(row, midx["ad_status"])
         meta.append({
             "d": day,
-            "camp": camp, "adset": adset, "ad": ad,
+            "camp": camp, "adset": adset, "ad": ad, "aid": cell(row, midx["aid"]),
             "sp": round(to_float(cell(row, midx["spent"])), 4),
             "im": to_float(cell(row, midx["impr"])),
             "cl": to_float(cell(row, midx["clicks"])),
@@ -929,7 +931,8 @@ def main():
         meta_rows = fetch_meta_rows(META_ACCOUNT_ID, META_API_SINCE,
                                     checkout_action=META_CHECKOUT_ACTION,
                                     attribution_windows=META_ATTRIBUTION_WINDOWS,
-                                    campaign_contains=META_CAMPAIGN_CONTAINS)
+                                    campaign_contains=META_CAMPAIGN_CONTAINS,
+                                    preview_limit=META_PREVIEW_LIMIT)
     sales_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_SALES), args.sales_file)
     google_rows = None
     if args.google_file or GID_GOOGLE:
@@ -950,6 +953,9 @@ def main():
         fx_rate, fx_rate_live = FX_RATE_FALLBACK, False
 
     data = process(meta_rows, sales_rows, fx_rate, fx_rate_live, google_rows, refund_rows)
+    if META_SOURCE == "api" and not args.meta_file:
+        import meta_api
+        data["ad_media"] = meta_api.AD_MEDIA  # miniaturas + previas (ver build/meta_api.py)
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia pela Routine) — lidos do
     # arquivo versionado ao lado do template. Sem chamada de API no build.

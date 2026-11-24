@@ -214,6 +214,22 @@
   .thead-title .tbl-search::placeholder{color:var(--muted)}
   /* indicativo ativo/pausado antes do nome da campanha/conjunto/anúncio (tabelas
      de otimização) — só o ícone; não altera cor/peso do texto do nome. */
+  .ad-th{width:36px; height:36px; border-radius:6px; object-fit:cover; vertical-align:middle; margin-right:8px; cursor:pointer; border:1px solid var(--border); flex-shrink:0}
+  .ad-th.none{display:inline-flex; align-items:center; justify-content:center; background:var(--thead); color:var(--muted); font-size:11px}
+  .ad-th:hover{border-color:var(--accent-blue)}
+  .adpv-ov{position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:16px}
+  .adpv-box{position:relative; background:var(--surface); color:var(--ink); border:1px solid var(--border); border-radius:14px; padding:22px 26px 20px; width:min(460px,100%); max-height:94vh; overflow:auto; text-align:center}
+  .adpv-box h3{margin:0 28px 4px 0; text-align:left; font-size:18px}
+  .adpv-sub{color:var(--muted); font-size:12px; text-align:left; margin-bottom:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .adpv-x{position:absolute; top:10px; right:12px; background:none; border:1px solid var(--accent-blue); color:var(--ink); border-radius:6px; width:28px; height:28px; font-size:18px; line-height:1; cursor:pointer}
+  .adpv-card{background:#fff; border-radius:12px; overflow:hidden; display:flex; justify-content:center; min-height:120px}
+  .adpv-card iframe{border:0; max-width:100%; background:#fff}
+  .adpv-card img{max-width:100%; max-height:60vh}
+  .adpv-none{color:#666; padding:40px 10px; font-size:13px}
+  .adpv-links{margin:12px 0 10px}
+  .adpv-lnk{color:var(--muted); font-size:12px; text-decoration:underline}
+  .adpv-btn{display:inline-block; border:1px solid var(--accent-blue); color:var(--accent-blue); border-radius:8px; padding:9px 16px; font-size:13px; text-decoration:none}
+  .adpv-btn:hover{background:var(--accent-soft)}
   .status-dot{display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; margin-right:6px; flex-shrink:0}
   .status-dot.on{width:7px; height:7px; border-radius:50%; background:var(--status-active); box-shadow:0 0 4px 1px var(--status-active-glow)}
   .status-dot.off{gap:2px}
