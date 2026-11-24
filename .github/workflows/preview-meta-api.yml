@@ -1,0 +1,36 @@
+name: Preview (Meta via API) - NAO publica no Pages
+
+# Roda SO nesta branch de teste (o arquivo precisa existir na branch para o
+# gatilho de push funcionar; na main ele nunca dispara). Gera o dashboard com o
+# Meta vindo da Marketing API e anexa o index.html ao run (aba Actions ->
+# Artifacts). NAO usa configure-pages/deploy-pages: o site de producao nao muda.
+on:
+  push:
+    branches: [ "claude/eloquent-noether-lm3fpx" ]
+    paths:
+      - "build/**"
+      - ".github/workflows/preview-meta-api.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build (Meta via API, vendas via CSV da planilha)
+        env:
+          META_SOURCE: api
+          META_ACCOUNT_ID: "358786128615575"
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+        run: python build/build.py --out dist/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-preview-meta-api
+          path: dist/index.html
+          retention-days: 7

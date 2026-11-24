@@ -53,8 +53,8 @@ SPREADSHEET_ID = cfg.SPREADSHEET_ID
 GID_META = cfg.GID_META
 # Fonte do Meta Ads: "sheet" (aba da planilha, padrão) ou "api" (Marketing API,
 # token em META_ACCESS_TOKEN). Ver build/meta_api.py.
-META_SOURCE = getattr(cfg, "META_SOURCE", "sheet")
-META_ACCOUNT_ID = getattr(cfg, "META_ACCOUNT_ID", "")
+META_SOURCE = os.environ.get("META_SOURCE") or getattr(cfg, "META_SOURCE", "sheet")
+META_ACCOUNT_ID = os.environ.get("META_ACCOUNT_ID") or getattr(cfg, "META_ACCOUNT_ID", "")
 META_API_SINCE = getattr(cfg, "META_API_SINCE", "2025-01-01")
 META_CHECKOUT_ACTION = getattr(cfg, "META_CHECKOUT_ACTION", "omni_initiated_checkout")
 META_ATTRIBUTION_WINDOWS = getattr(cfg, "META_ATTRIBUTION_WINDOWS", None)
