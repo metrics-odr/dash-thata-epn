@@ -592,10 +592,15 @@ function renderFunnelH(id, steps, dd){
   const off=k=>S[k][1]==='-';                       /* etapa sem dados (ex.: Google Ads não tem Page Views/Checkouts) */
   const rB=sec(S[8],0), tB=sec(S[8],1), rL=sec(S[9],0), tL=sec(S[9],1);
   const kpi=(label,val,tone,delta,extra,spk)=>`<div class="fk tint t-${tone}"><div class="fk-label">${label}</div><div class="fk-val">${val}</div>${delta?`<div class="m-delta">${delta}</div>`:''}${extra?`<div class="fk-sub">${extra}</div>`:''}${spk}</div>`;
+  /* Lucro = Fat. líquido − gasto (já na moeda de exibição; gasto em USD é convertido pela cotação em BRL) */
+  const gDisp=x=>brlMode()?gastoOf(x)*(FX_RATE||FX_FALLBACK):gastoOf(x);
+  const lucroOf=x=>fatOf(x)*NET_F-gDisp(x);
+  const lucroTot=dd.reduce((a,x)=>a+lucroOf(x),0);
   const kpis=
     kpi('Gasto total',S[0][1],'red',S[0][5],'',sp(x=>gastoOf(x),brl))
    +kpi('Faturamento bruto',S[8][1],'green',S[8][5],'',sp(fatOf,brlNum))
    +kpi('Faturamento líquido',S[9][1],'green',S[9][5],'',sp(x=>fatOf(x)*NET_F,brlNum))
+   +kpi('Lucro',dd.length?brlNum(lucroTot):'-',lucroTot<0?'red':'green','','Fat. líquido − gasto',sp(lucroOf,brlNum))
    +kpi('ROAS',rB[1],'yellow',mini(rB[3]),`Líquido: <b>${rL[1]}</b>`,sp(roasOf,roasf))
    +kpi('Ticket médio',tB[1],'gold',mini(tB[3]),`Líquido: <b>${tL[1]}</b>`,sp(x=>x.vendas?fatOf(x)/x.vendas:null,brlNum));
 
